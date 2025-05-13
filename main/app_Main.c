@@ -23,8 +23,8 @@
 #include <ds3231.h>
 #include <string.h>
 
-#define HOURSENSOR GPIO_NUM_15
-#define MINUTESENSOR GPIO_NUM_16
+#define HOURSENSOR GPIO_NUM_6
+#define MINUTESENSOR GPIO_NUM_7
 
 // static void obtain_time(void);
 
@@ -33,7 +33,7 @@ void ds3231_test(void *pvParameters)
     i2c_dev_t dev;
     memset(&dev, 0, sizeof(i2c_dev_t));
 
-    ESP_ERROR_CHECK(ds3231_init_desc(&dev, 0, CONFIG_EXAMPLE_I2C_MASTER_SDA, CONFIG_EXAMPLE_I2C_MASTER_SCL));
+    ESP_ERROR_CHECK(ds3231_init_desc(&dev, 0, GPIO_NUM_8, GPIO_NUM_9));
 
     // setup datetime: 2016-10-09 13:50:10
     struct tm time = {
