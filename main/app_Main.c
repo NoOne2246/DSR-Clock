@@ -62,8 +62,8 @@ void ds3231_test(void *pvParameters)
          * sdkconfig for ESP8266, which is enabled by default for this
          * example. see sdkconfig.defaults.esp8266
          */
-        printf("%04d-%02d-%02d %02d:%02d:%02d, %.2f deg Cel\n", time.tm_year + 1900 /*Add 1900 for better readability*/, time.tm_mon + 1,
-            time.tm_mday, time.tm_hour, time.tm_min, time.tm_sec, temp);
+        printf("%04d-%02d-%02d %02d:%02d:%02d\n", time.tm_year + 1900 /*Add 1900 for better readability*/, time.tm_mon + 1,
+            time.tm_mday, time.tm_hour, time.tm_min, time.tm_sec);
     }
 }
 

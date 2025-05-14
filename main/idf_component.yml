@@ -1,3 +1,8 @@
 dependencies:
   protocol_examples_common:
     path: ${IDF_PATH}/examples/common_components/protocol_examples_common
+  ds3231:
+    path: ../components/ds3231
+  # Not sure if you need to explicitly depend on your dependencies dependencies, so maybe worth just trying only the ds3231
+  esp_idf_lib_helpers:
+    path: ../components/esp_idf_lib_helpers

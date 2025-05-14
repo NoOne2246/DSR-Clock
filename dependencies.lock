@@ -1,4 +1,16 @@
 dependencies:
+  ds3231:
+    dependencies: []
+    source:
+      path: W:\github\DSR-Clock\components\ds3231
+      type: local
+    version: '*'
+  esp_idf_lib_helpers:
+    dependencies: []
+    source:
+      path: W:\github\DSR-Clock\components\esp_idf_lib_helpers
+      type: local
+    version: '*'
   idf:
     source:
       type: idf
@@ -10,7 +22,9 @@ dependencies:
       type: local
     version: '*'
 direct_dependencies:
+- ds3231
+- esp_idf_lib_helpers
 - protocol_examples_common
-manifest_hash: 9a9520c926aa0a3e6ab6efa4fb14c3591e654d3887543776c1f730f359b02661
+manifest_hash: daee799eb36364f10a3b7c8eebe435dd18963b2e5ef910b656c24fa944a47ff1
 target: esp32c3
 version: 2.0.0
