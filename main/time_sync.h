@@ -4,7 +4,7 @@
 #include <stdbool.h>
 
 // Function prototypes
-void set_time(void);
+void set_time(void *pvParameter);
 bool obtain_time_sntp(void);
 bool obtain_time_rtc(void);
 bool set_time_rtc(void);
