@@ -5,13 +5,15 @@
 #include "esp_log.h"
 #include <time.h>
 #include "nvs_flash.h"
+#include "esp_netif.h"
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
-#include "time_sync.h"
+#include "time_handler.h"
 #include "wifi_manager.h"
 #include "webserver.h"
+#include "nvs_handler.h"
 
 #include "gpio_definitions.h"
 
@@ -39,18 +41,24 @@ void getClock(void *pvParameters)
 
 void app_main(void)
 {
+    
+    //----------------------------
+    //**    Initialise NVS      **
+    //----------------------------
+    init_nvs();
+
     //----------------------------
     //**    Initialise Time     **
     //----------------------------
+        
+    set_TZ(NULL);
     
-    setenv("TZ", "AEST-10AEDT, M10.1.0, M4.1.0", 1);
-    tzset();
-    
-    ESP_ERROR_CHECK(wifi_init());
-    wifi_connect(WIFI_SSID, WIFI_PASSWORD);
-    start_webserver();
-    
-    xTaskCreate(set_time, "Set Time", 4*1024, NULL, 3, NULL);
+    // ESP_ERROR_CHECK(wifi_init());
+    // wifi_connect(WIFI_SSID, WIFI_PASSWORD);
+    // start_webserver();
+
+    xTaskCreate(set_time, "Set Time", 4 * 1024, NULL, 3, NULL);
+
 
     //----------------------------
     //**   Initialise Sensor    **
@@ -67,6 +75,8 @@ void app_main(void)
     //**    Initialise Motor    **
     //----------------------------
 
+    static httpd_handle_t server = NULL;
+    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_AP_STAIPASSIGNED, &connect_handler, &server));
 
     //----------------------------
     //**      Loop Update       **
