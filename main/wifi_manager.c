@@ -22,6 +22,8 @@ static EventGroupHandle_t wifi_event_group = NULL;
 static esp_event_handler_instance_t ip_event_handler;
 static esp_event_handler_instance_t wifi_event_handler;
 
+static bool manual_disconnect = false;
+
 static const char *TAG = "Wi-Fi_Manager";
 
 static void ip_event_cb(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
@@ -76,6 +78,12 @@ static void wifi_event_cb(void *arg, esp_event_base_t event_base, int32_t event_
         break;
     case (WIFI_EVENT_STA_DISCONNECTED):
         ESP_LOGI(TAG, "Wi-Fi disconnected");
+        
+        if (manual_disconnect) {
+            ESP_LOGI(TAG, "Skipping auto-reconnect (manual disconnect)");
+            break;  // Exit without reconnecting
+        }
+        
         if (wifi_retry_count < WIFI_RETRY_ATTEMPT) {
             ESP_LOGI(TAG, "Retrying to connect to Wi-Fi network...");
             esp_wifi_connect();
@@ -165,6 +173,23 @@ esp_err_t wifi_init(void)
 
 esp_err_t wifi_connect(char* wifi_ssid, char* wifi_password)
 {
+    
+    ESP_LOGI(TAG, "Starting new Wi-Fi...");
+    wifi_config_t current_config;
+    wifi_ap_record_t ap_info;
+    if (esp_wifi_sta_get_ap_info(&ap_info) == ESP_OK) {
+        if (wifi_ssid == NULL || strlen(wifi_ssid) == 0 || wifi_password == NULL || strlen(wifi_password) == 0){
+            ESP_LOGI(TAG, "Missing details for new Wi-Fi");
+            return ESP_FAIL;
+        }
+        ESP_ERROR_CHECK(esp_wifi_get_config(WIFI_IF_STA, &current_config));
+        ESP_LOGI(TAG, "Disconnecting from current Wi-Fi...");
+        manual_disconnect = true;
+        ESP_ERROR_CHECK(esp_wifi_disconnect());
+        vTaskDelay(pdMS_TO_TICKS(2000));  // Short delay to allow clean disconnection
+
+    }
+
     wifi_config_t wifi_config = {
         .sta = {
             // this sets the weakest authmode accepted in fast scan mode (default)
@@ -193,40 +218,32 @@ esp_err_t wifi_connect(char* wifi_ssid, char* wifi_password)
 
     ESP_LOGI(TAG,"Attempting to connect to %s using %s", wifi_config.sta.ssid, wifi_config.sta.password);
 
-    // wifi_config_t current_config;
-    // ESP_ERROR_CHECK(esp_wifi_get_config(WIFI_IF_STA, &current_config));
-
-    // ESP_LOGI(TAG, "Current SSID: %s", current_config.sta.ssid);
-    // ESP_LOGI(TAG, "Current Password: %s", current_config.sta.password);
-
     ESP_ERROR_CHECK(esp_wifi_start());
 
-    // wifi_ap_record_t ap_info;
-    // if (esp_wifi_sta_get_ap_info(&ap_info) == ESP_OK) {
-    //     ESP_LOGI(TAG, "Connected to: %s", ap_info.ssid);
-    //     esp_wifi_set_auto_connect(false);
-    //     ESP_ERROR_CHECK(esp_wifi_disconnect());
-    //     esp_wifi_set_auto_connect(true);
-    //     ESP_LOGI(TAG, "Disconnected from Wi-Fi.");
-    // } else {
-    //     ESP_LOGW(TAG, "Not connected to any Wi-Fi network.");
-    // }
-    ESP_ERROR_CHECK(esp_wifi_connect());  // Connect to new AP
+    ESP_ERROR_CHECK(esp_wifi_connect());
+
 
     EventBits_t bits = xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_BIT | WIFI_FAIL_BIT, pdFALSE, pdFALSE, portMAX_DELAY);
-
+    
     if (bits & WIFI_CONNECTED_BIT) {
-        ESP_LOGI(TAG, "Connected to Wi-Fi network: %s", wifi_config.sta.ssid);
-        //ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-        create_set_time_task();
+        ESP_ERROR_CHECK(esp_wifi_get_config(WIFI_IF_STA, &current_config));
+        ESP_LOGI(TAG, "Successfully connected to %s", current_config.sta.ssid);
+        manual_disconnect = false;
         return ESP_OK;
     } else if (bits & WIFI_FAIL_BIT) {
-        ESP_LOGE(TAG, "Failed to connect to Wi-Fi network: %s", wifi_config.sta.ssid);
+        ESP_LOGE(TAG, "Failed to connect. Restoring previous network: %s", current_config.sta.ssid);
+        // Restore previous Wi-Fi configuration
+        ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &current_config));
+        ESP_ERROR_CHECK(esp_wifi_connect());
+        
+        ESP_ERROR_CHECK(esp_wifi_get_config(WIFI_IF_STA, &current_config));
+        ESP_LOGI(TAG, "Successfully reconnected to %s", current_config.sta.ssid);
         return ESP_FAIL;
     }
 
-    ESP_LOGE(TAG, "Unexpected Wi-Fi error");
+    ESP_LOGE(TAG, "Unexpected error during Wi-Fi transition.");
     return ESP_FAIL;
+
 }
 
 esp_err_t wifi_disconnect(void)

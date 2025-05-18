@@ -34,6 +34,14 @@ esp_err_t get_handler(httpd_req_t *req)
     return error;
 }
 
+/**
+ * @brief Parses and updates Wi-Fi credentials.
+ * 
+ * Extracts SSID and password from the input string, connects to the network,
+ * and saves the credentials in NVS upon successful connection.
+ * 
+ * @param input Input string formatted as "ssid=<SSID>&password=<PASSWORD>"
+ */
 void update_wifi(const char *input){
     char ssid[32], password[64];
     sscanf(input, "ssid=%[^&]&password=%s", ssid, password);
@@ -45,12 +53,26 @@ void update_wifi(const char *input){
     }
 }
 
+/**
+ * @brief Updates the system timezone.
+ * 
+ * Extracts the timezone from the input string and applies the new timezone setting.
+ * 
+ * @param input Input string formatted as "timezone=<TIMEZONE>"
+ */
 void update_timezone(const char *input){
     char tz[32];
     sscanf(input, "timezone=%[^&]", tz);
     set_TZ(tz);
 }
 
+/**
+ * @brief Manually updates the system datetime.
+ * 
+ * Extracts the datetime value from the input string and sets the system time.
+ * 
+ * @param input Input string formatted as "datetime=<DATETIME>"
+ */
 void update_datetime(const char *input){
     char dt[32];
     sscanf(input, "datetime=%[^&]", dt);
@@ -75,7 +97,7 @@ esp_err_t post_handler(httpd_req_t *req)
         return ESP_FAIL;
     }
     buf[ret] = '\0';
-    
+
     ESP_LOGI(TAG, "Received post data: %sEND", buf);
     //normalize_utf8(buf);
     normalize_line_endings(buf);
@@ -90,6 +112,7 @@ esp_err_t post_handler(httpd_req_t *req)
     {
         ESP_LOGI(TAG, "Error %d while sending Response", error);
     }
+    vTaskDelay(pdMS_TO_TICKS(500)); 
 
     if (strstr(buf, "ssid") != NULL) {
         ESP_LOGI(TAG, "Updating WiFi...");
