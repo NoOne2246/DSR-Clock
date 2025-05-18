@@ -18,6 +18,15 @@ static const char *TAG = "TIME_HANDLER";
 
 TaskHandle_t set_time_task_handle = NULL; 
 
+/**
+ * @brief Converts a `struct tm` time structure to a `time_t` timestamp in UTC.
+ * 
+ * Temporarily sets the timezone to UTC, converts the given time structure using `mktime()`,
+ * and restores the original timezone setting.
+ * 
+ * @param tm Pointer to a `struct tm` containing the local time.
+ * @return time_t The UTC timestamp corresponding to the provided time structure.
+ */
 time_t my_timegm(struct tm *tm) {
     time_t ret;
     char *tz = getenv("TZ");  // Save current timezone
@@ -38,7 +47,14 @@ time_t my_timegm(struct tm *tm) {
     return ret;
 }
 
-
+/**
+ * @brief Obtains the current time from an SNTP server.
+ * 
+ * Connects to an NTP server and retrieves the current timestamp. The function retries
+ * multiple times if the sync fails.
+ * 
+ * @return bool `true` if time was successfully synchronized, `false` otherwise.
+ */
 bool obtain_time_sntp(void)
 {
     wifi_ap_record_t ap_info;
@@ -62,6 +78,13 @@ bool obtain_time_sntp(void)
     return retry != RETRY_COUNT;
 }
 
+/**
+ * @brief Retrieves the current time from an RTC (DS3231) module.
+ * 
+ * Initializes I2C communication, reads the RTC time, and sets the system time.
+ * 
+ * @return bool `true` if RTC time was successfully obtained, `false` otherwise.
+ */
 bool obtain_time_rtc(void)
 {
     ESP_ERROR_CHECK(i2cdev_init());
@@ -89,6 +112,13 @@ bool obtain_time_rtc(void)
     return retry != RETRY_COUNT;
 }
 
+/**
+ * @brief Writes the current system time to the RTC module.
+ * 
+ * Retrieves the system time, converts it to `struct tm`, and updates the RTC.
+ * 
+ * @return bool `true` if time was successfully written, `false` otherwise.
+ */
 bool set_time_rtc(void)
 {
     ESP_ERROR_CHECK(i2cdev_init());
@@ -113,6 +143,14 @@ bool set_time_rtc(void)
     return retry != RETRY_COUNT;
 }
 
+/**
+ * @brief Continuously attempts to sync system time from SNTP or RTC.
+ * 
+ * Runs in a task loop, trying SNTP first, then RTC as a fallback. Once time is set,
+ * the task terminates.
+ * 
+ * @param pvParameter Unused parameter for FreeRTOS task compatibility.
+ */
 void set_time(void * pvParameter)
 {
     while(1) {
@@ -127,6 +165,11 @@ void set_time(void * pvParameter)
     }
 }
 
+/**
+ * @brief Creates a task to update the system time periodically.
+ * 
+ * If the task is already running, it is deleted and restarted to ensure fresh execution.
+ */
 void create_set_time_task() {
     
     ESP_LOGI(TAG, "Attempt to update time");
@@ -138,6 +181,14 @@ void create_set_time_task() {
     }
 }
 
+/**
+ * @brief Manually sets the system time based on a user-provided datetime string.
+ * 
+ * Parses a datetime string (in `YYYY-MM-DDTHH:MM` format), converts it to UTC, and updates
+ * the system time.
+ * 
+ * @param datetime_str Input string containing the datetime.
+ */
 void obtain_time_manual(const char *datetime_str) {
     struct tm local_time = {0};
 
@@ -195,15 +246,12 @@ void set_TZ(const char *tz_identifier) {
 }
 
 /**
- * @brief Retrieves the POSIX timezone string for a given IANA timezone identifier.
- *
- * This function searches the predefined `Mapping[]` array for a match with the provided
- * `zone_identifier`. If a match is found, it returns the corresponding POSIX timezone string.
- * If no match exists, it defaults to "GMT0".
- *
- * @param zone_identifier The IANA timezone identifier (e.g., "America/New_York").
- * @return const char* The corresponding POSIX timezone string (e.g., "EST5EDT,M3.2.0,M11.1.0"),
- *         or "GMT0" if the identifier is not found.
+ * @brief Maps an IANA timezone identifier to a POSIX timezone string.
+ * 
+ * Searches the predefined `Mapping[]` array for a corresponding POSIX timezone.
+ * 
+ * @param zone_identifier The IANA timezone identifier (e.g., `"America/New_York"`).
+ * @return const char* POSIX timezone string or `NULL` if not found.
  */
 const char *get_posix_from_id(const char *zone_identifier) {
     for (size_t i = 0; i < sizeof(Mapping) / sizeof(Mapping[0]); i++) {
@@ -216,15 +264,12 @@ const char *get_posix_from_id(const char *zone_identifier) {
 }
 
 /**
- * @brief Generates an HTML dropdown list containing timezone options.
+ * @brief Generates an HTML dropdown list of available timezones.
  * 
- * This function constructs a `<select>` element by iterating through a predefined
- * list of timezones stored in `Mapping[]`. Each entry is formatted as an `<option>`
- * tag representing an available timezone. Memory allocation is handled dynamically
- * to prevent buffer overflow.
- *
- * @return char* A dynamically allocated string containing the HTML dropdown list.
- *         The caller is responsible for freeing this memory after use.
+ * Constructs a `<select>` element containing timezone options from `Mapping[]`, ensuring
+ * dynamic memory allocation to avoid buffer overflow.
+ * 
+ * @return char* Allocated HTML string containing the dropdown list.
  */
 char *generateSelectList(void) {
     size_t buffer_size = 1024;  // Initial size
