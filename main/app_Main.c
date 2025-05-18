@@ -14,6 +14,7 @@
 #include "wifi_manager.h"
 #include "webserver.h"
 #include "nvs_handler.h"
+#include "stepper_control.h"
 
 #include "gpio_definitions.h"
 
@@ -76,6 +77,7 @@ void app_main(void)
     //----------------------------
     //**    Initialise Motor    **
     //----------------------------
+    // stepper_init();
 
     //----------------------------
     //**      Loop Update       **
