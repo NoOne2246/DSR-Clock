@@ -5,18 +5,17 @@
 #include "esp_log.h"
 #include <time.h>
 #include "nvs_flash.h"
+#include "esp_netif.h"
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
-#include "time_sync.h"
+#include "time_handler.h"
 #include "wifi_manager.h"
 #include "webserver.h"
+#include "nvs_handler.h"
 
 #include "gpio_definitions.h"
-
-#define WIFI_SSID "WiFi-12A6"
-#define WIFI_PASSWORD "04371304"
 
 void getClock(void *pvParameters)
 {
@@ -39,18 +38,29 @@ void getClock(void *pvParameters)
 
 void app_main(void)
 {
+    
+    //----------------------------
+    //**    Initialise NVS      **
+    //----------------------------
+    init_nvs();
+    set_TZ(NULL);
+    // set_value_in_nvs("ssid", "WiFi-12A6");
+    // set_value_in_nvs("password", "04371304");
+
+    //----------------------------
+    //**    Initialise Wi-Fi    **
+    //----------------------------
+
+    wifi_init();
+
+    static httpd_handle_t server = NULL;
+    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_AP_STAIPASSIGNED, &connect_handler, &server));
+
     //----------------------------
     //**    Initialise Time     **
     //----------------------------
     
-    setenv("TZ", "AEST-10AEDT, M10.1.0, M4.1.0", 1);
-    tzset();
-    
-    ESP_ERROR_CHECK(wifi_init());
-    wifi_connect(WIFI_SSID, WIFI_PASSWORD);
-    start_webserver();
-    
-    xTaskCreate(set_time, "Set Time", 4*1024, NULL, 3, NULL);
+    create_set_time_task();
 
     //----------------------------
     //**   Initialise Sensor    **
@@ -67,11 +77,10 @@ void app_main(void)
     //**    Initialise Motor    **
     //----------------------------
 
-
     //----------------------------
     //**      Loop Update       **
     //----------------------------
 
-    xTaskCreate(getClock, "Show Time", 4*1024, NULL, 3, NULL);
+    // xTaskCreate(getClock, "Show Time", 4*1024, NULL, 3, NULL);
 }
 
