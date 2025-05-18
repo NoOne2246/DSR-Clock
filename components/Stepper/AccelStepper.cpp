@@ -558,7 +558,7 @@ void AccelStepper::disableOutputs()
     setOutputPins(0); // Handles inversion automatically
     if (_enablePin != 0xff)
     {
-        gpio_reset_pin(_pin[2]);
+        esp_rom_gpio_pad_select_gpio(_pin[2]);
         gpio_set_direction(_enablePin, GPIO_MODE_OUTPUT);
         gpio_set_level(_enablePin, LOW ^ _enableInverted);
     }
@@ -569,26 +569,26 @@ void AccelStepper::enableOutputs()
     if (!_interface)
         return;
 
-    gpio_reset_pin(_pin[0]);
+    esp_rom_gpio_pad_select_gpio(_pin[0]);
     gpio_set_direction(_pin[0], GPIO_MODE_OUTPUT);
-    gpio_reset_pin(_pin[1]);
+    esp_rom_gpio_pad_select_gpio(_pin[1]);
     gpio_set_direction(_pin[1], GPIO_MODE_OUTPUT);
     if (_interface == FULL4WIRE || _interface == HALF4WIRE)
     {
-        gpio_reset_pin(_pin[2]);
+        esp_rom_gpio_pad_select_gpio(_pin[2]);
         gpio_set_direction(_pin[2], GPIO_MODE_OUTPUT);
-        gpio_reset_pin(_pin[3]);
+        esp_rom_gpio_pad_select_gpio(_pin[3]);
         gpio_set_direction(_pin[3], GPIO_MODE_OUTPUT);
     }
     else if (_interface == FULL3WIRE || _interface == HALF3WIRE)
     {
-        gpio_reset_pin(_pin[2]);
+        esp_rom_gpio_pad_select_gpio(_pin[2]);
         gpio_set_direction(_pin[2], GPIO_MODE_OUTPUT);
     }
 
     if (_enablePin != 0xff)
     {
-        gpio_reset_pin(_enablePin);
+        esp_rom_gpio_pad_select_gpio(_enablePin);
         gpio_set_direction(_enablePin, GPIO_MODE_OUTPUT);
         gpio_set_level(_enablePin, HIGH ^ _enableInverted);
     }
@@ -606,7 +606,7 @@ void AccelStepper::setEnablePin(gpio_num_t enablePin)
     // This happens after construction, so init pin now.
     if (_enablePin != 0xff)
     {
-        gpio_reset_pin(_enablePin);
+        esp_rom_gpio_pad_select_gpio(_enablePin);
         gpio_set_direction(_enablePin, GPIO_MODE_OUTPUT);
         gpio_set_level(_enablePin, HIGH ^ _enableInverted);
     }
