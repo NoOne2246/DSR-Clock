@@ -7,6 +7,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include "nvs_handler.h"
+#include "util.h"
 
 #include "gpio_definitions.h"
 
@@ -126,9 +127,20 @@ void set_time(void * pvParameter)
     }
 }
 
+void create_set_time_task() {
+    
+    ESP_LOGI(TAG, "Attempt to update time");
+    if (set_time_task_handle == NULL) {  // Ensure task is not running
+        xTaskCreate(set_time, "Set Time", 4 * 1024, NULL, 3, &set_time_task_handle);
+    } else {
+        vTaskDelete(set_time_task_handle);
+        xTaskCreate(set_time, "Set Time", 4 * 1024, NULL, 3, &set_time_task_handle);
+    }
+}
+
 void obtain_time_manual(const char *datetime_str) {
     struct tm local_time = {0};
-    
+
     // Parse YYYY-MM-DDTHH:MM format
     if (sscanf(datetime_str, "%4d-%2d-%2dT%2d:%2d", 
                &local_time.tm_year, &local_time.tm_mon, &local_time.tm_mday, 
@@ -165,17 +177,21 @@ void obtain_time_manual(const char *datetime_str) {
  */
 void set_TZ(const char *tz_identifier) {
     const char *timezone;
-    
-    if (tz_identifier != NULL && strlen(tz_identifier) > 0) {
-        timezone = get_posix_from_id(tz_identifier);
-        set_value_in_nvs("timezone", timezone);
+
+    if (tz_identifier) {
+        timezone = get_posix_from_id(tz_identifier); // Use modified temp_tz
+        if(timezone == NULL){
+            ESP_LOGI(TAG, "Failed to find matching timezone, no change applied");
+            set_value_in_nvs("timezone", timezone);
+        }
     } else {
         timezone = get_value_from_nvs("timezone", "GMT0");
     }
-
-    ESP_LOGI("TZ", "Setting timezone to: %s", timezone);
-    setenv("TZ", timezone, 1);
-    tzset();
+    if(timezone != NULL){
+        ESP_LOGI(TAG, "Setting POSIX to: %s", timezone);
+        setenv("TZ", timezone, 1);
+        tzset();
+    }
 }
 
 /**
@@ -192,10 +208,11 @@ void set_TZ(const char *tz_identifier) {
 const char *get_posix_from_id(const char *zone_identifier) {
     for (size_t i = 0; i < sizeof(Mapping) / sizeof(Mapping[0]); i++) {
         if (strcmp(Mapping[i].iana_timezone, zone_identifier) == 0) {
+            ESP_LOGI(TAG,"matched");
             return Mapping[i].posix_timezone;
         }
     }
-    return "GMT0";  // Return NULL if not found
+    return NULL;  // Return NULL if not found
 }
 
 /**
@@ -216,27 +233,23 @@ char *generateSelectList(void) {
     
     if (!html) return NULL;
 
-    position += snprintf(html + position, buffer_size - position, "<select name=\"timezone\">\n");
-
-    for (size_t i = 0; i < sizeof(Mapping) / sizeof(Mapping[0]); i++) {
-        size_t required_size = position + 64;  // Approximate space needed per entry
-
-        // Expand buffer dynamically if needed
-        if (required_size >= buffer_size) {
-            buffer_size *= 2;  // Double the buffer
-            char *new_html = realloc(html, buffer_size);
-            if (!new_html) {
-                free(html);
-                return NULL;
-            }
-            html = new_html;
-        }
-
-        position += snprintf(html + position, buffer_size - position, 
-                             "<option value=\"%s\">%s</option>\n", 
-                             Mapping[i].iana_timezone, Mapping[i].iana_timezone);
+    // Append opening select tag
+    if (!append_to_buffer(&html, &buffer_size, &position, "<select name=\"timezone\">\n")) {
+        return NULL; // Handle allocation failure
     }
 
-    snprintf(html + position, buffer_size - position, "</select>\n");
+    // Loop through Mapping array and add options
+    for (size_t i = 0; i < sizeof(Mapping) / sizeof(Mapping[0]); i++) {
+        if (!append_to_buffer(&html, &buffer_size, &position, 
+            "<option value=\"%s\">%s</option>\n", Mapping[i].iana_timezone, Mapping[i].iana_timezone)) {
+            return NULL; // Handle allocation failure
+        }
+    }
+
+    // Append closing select tag
+    if (!append_to_buffer(&html, &buffer_size, &position, "</select>\n")) {
+        return NULL; // Handle allocation failure
+    }
+
     return html;
 }

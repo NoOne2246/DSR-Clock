@@ -3,6 +3,11 @@
 #include "esp_log.h"
 #include "esp_heap_caps.h"
 #include "time_handler.h"
+#include "wifi_manager.h"
+#include "nvs_handler.h"
+#include "util.h"
+#include <regex.h>
+#include <stdio.h>
 
 
 static const char *TAG = "WebServer";
@@ -28,41 +33,28 @@ esp_err_t get_handler(httpd_req_t *req)
     }
     return error;
 }
-void update_wifi(const char *input){
-    char ssid[32];
-    char password[64];
-    char *ssid_pos = strstr(input, "ssid=");
-    char *password_pos = strstr(input, "&password=");
-    
-    if (ssid_pos) {
-        ssid_pos += 5; // Move past "ssid="
-        sscanf(ssid_pos, "%[^&]", ssid); // Extract SSID up to '&'
-    }
 
-    if (password_pos) {
-        password_pos += 9; // Move past "&password="
-        strcpy(password, password_pos); // Extract password directly
+void update_wifi(const char *input){
+    char ssid[32], password[64];
+    sscanf(input, "ssid=%[^&]&password=%s", ssid, password);
+
+    esp_err_t ret = wifi_connect(ssid, password);
+    if (ret == ESP_OK){
+        set_value_in_nvs("ssid", ssid);
+        set_value_in_nvs("password", password);
     }
 }
 
 void update_timezone(const char *input){
     char tz[32];
-    char *equal_pos = strstr(input, "=");
-    if (equal_pos) {
-        strncpy(tz, equal_pos + 1, sizeof(tz) - 1);  // Copy the value after "="
-        tz[sizeof(tz) - 1] = '\0';  // Ensure null termination
-        set_TZ(tz);  // Pass the extracted timezone
-    }
+    sscanf(input, "timezone=%[^&]", tz);
+    set_TZ(tz);
 }
 
 void update_datetime(const char *input){
     char dt[32];
-    char *equal_pos = strstr(input, "=");
-    if (equal_pos) {
-        strncpy(dt, equal_pos + 1, sizeof(dt) - 1);  // Copy the value after "="
-        dt[sizeof(dt) - 1] = '\0';  // Ensure null termination
-        obtain_time_manual(dt);  // Pass the extracted timezone
-    }
+    sscanf(input, "datetime=%[^&]", dt);
+    obtain_time_manual(dt);  // Pass the extracted timezone
 }
 
 /**
@@ -73,20 +65,23 @@ void update_datetime(const char *input){
  * @param req HTTP request structure.
  * @return esp_err_t ESP_OK on success, ESP_FAIL on error.
  */
-esp_err_t post_handler(httpd_req_t *req) {
-    char buf[100];
-    int ret, remaining = req->content_len;
-
-    while (remaining > 0) {
-        if ((ret = httpd_req_recv(req, buf, MIN(remaining, sizeof(buf)))) <= 0) {
-            if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
-                continue;
-            }
-            return ESP_FAIL;
-        }
-        remaining -= ret;
-        ESP_LOGI(TAG, "Received post data: %.*s", ret, buf);
+esp_err_t post_handler(httpd_req_t *req)
+{
+    char buf[150];
+    size_t recv_size = MIN(req->content_len, sizeof(buf));
+    int ret = httpd_req_recv(req, buf, recv_size);
+    if(ret<=0)
+    { 
+        return ESP_FAIL;
     }
+    buf[ret] = '\0';
+    
+    ESP_LOGI(TAG, "Received post data: %sEND", buf);
+    //normalize_utf8(buf);
+    normalize_line_endings(buf);
+    trim_whitespace(buf);
+    url_decode(buf);
+    ESP_LOGI(TAG, "Decoded data: %s", buf);
 
     esp_err_t error;
     const char *response = (const char *) req ->user_ctx;
@@ -95,14 +90,15 @@ esp_err_t post_handler(httpd_req_t *req) {
     {
         ESP_LOGI(TAG, "Error %d while sending Response", error);
     }
-    return ESP_OK;
 
-    if (strstr(buf, "SSID") != NULL) {
+    if (strstr(buf, "ssid") != NULL) {
         ESP_LOGI(TAG, "Updating WiFi...");
         update_wifi(buf);
     } else if (strstr(buf, "timezone") != NULL) {
+        ESP_LOGI(TAG, "setting timezone");
         update_timezone(buf);
     } else if (strstr(buf, "datetime") != NULL) {
+        ESP_LOGI(TAG, "setting datetime");
         update_datetime(buf);
     } else if (strstr(buf, "Rewind") != NULL) {
         ESP_LOGI(TAG, "Rewinding...");
@@ -113,6 +109,8 @@ esp_err_t post_handler(httpd_req_t *req) {
     }else {
         ESP_LOGW(TAG, "Unknown parameter received");
     }
+    
+    return ESP_OK;
 }
 
 /**
@@ -133,63 +131,54 @@ esp_err_t post_handler(httpd_req_t *req) {
  *         or NULL if allocation fails.
  */
 char *generate_html_page(void) {
-    size_t buffer_size = 1024 * 3 ;  // Initial 3 KB allocation
+    size_t buffer_size = 1024 * 4;  // Initial 4 KB allocation
     size_t position = 0;  // Tracks buffer usage
     char *html = malloc(buffer_size);
-    
+
     if (!html) return NULL;
 
-    // Function to append to buffer safely
-    #define APPEND(fmt, ...) \
-        do { \
-            size_t required = snprintf(html + position, buffer_size - position, fmt, ##__VA_ARGS__); \
-            if (position + required >= buffer_size) { \
-                buffer_size *= 2; \
-                char *new_html = realloc(html, buffer_size); \
-                if (!new_html) { free(html); return NULL; } \
-                html = new_html; \
-            } \
-            position += required; \
-        } while (0)
+    // Append HTML structure using `append_to_buffer()`
+    if (!append_to_buffer(&html, &buffer_size, &position, "<!DOCTYPE html><html><head><style>"))
+        return NULL;
 
-    // Append page content
-    APPEND("<!DOCTYPE html><html><head><style>");
-    APPEND("* { box-sizing: border-box; }");
-    APPEND("input[type=submit] { background-color: #008CBA; color: white; padding: 12px 20px; border: none; border-radius: 4px; cursor: pointer; float: right; width: 80%%; }");
-    APPEND("input, select { width: 100%%; padding: 12px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; }");
-    APPEND("label { padding: 12px 12px 12px 0; display: inline-block; }");
-    APPEND(".container { border-radius: 5px; padding: 20px; }");
-    APPEND(".col-25 { float: left; width: 25%%; margin-top: 6px; }");
-    APPEND(".col-50 { float: left; width: 50%%; margin-top: 6px; }");
-    APPEND("@media screen and (max-width: 600px) { .col-25, .col-50, input[type=submit] { width: 100%%; margin-top: 10; }}");
-    APPEND("</style></head><body><h1 style=\"text-align: center\">Dragonsong Reprise Clock</h1><div class=\"container\">");
+    append_to_buffer(&html, &buffer_size, &position, "* { box-sizing: border-box; }");
+    append_to_buffer(&html, &buffer_size, &position, "input[type=submit] { background-color: #008CBA; color: white; padding: 12px 20px; border: none; border-radius: 4px; cursor: pointer; float: right; width: 80%%; }");
+    append_to_buffer(&html, &buffer_size, &position, "input, select { width: 100%%; padding: 12px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; }");
+    append_to_buffer(&html, &buffer_size, &position, "label { padding: 12px 12px 12px 0; display: inline-block; }");
+    append_to_buffer(&html, &buffer_size, &position, ".container { border-radius: 5px; padding: 20px; }");
+    append_to_buffer(&html, &buffer_size, &position, ".col-25 { float: left; width: 25%%; margin-top: 6px; }");
+    append_to_buffer(&html, &buffer_size, &position, ".col-50 { float: left; width: 50%%; margin-top: 6px; }");
+    append_to_buffer(&html, &buffer_size, &position, ".row::after { content: \"\"; display: table; clear: both;}");
+    append_to_buffer(&html, &buffer_size, &position, "@media screen and (max-width: 600px) { .col-25, .col-50, input[type=submit] { width: 100%%; margin-top: 10px; }}");
+    append_to_buffer(&html, &buffer_size, &position, "</style></head><body><h1 style=\"text-align: center\">Dragonsong Reprise Clock</h1><div class=\"container\">");
 
-    // SSID Form
-    APPEND("<form action=\"\" method=\"post\"><div class=\"row\"><div class=\"col-25\"><label>SSID:</label></div>");
-    APPEND("<div class=\"col-50\"><input type=\"text\" id=\"ssid\"></div></div>");
-    APPEND("<div class=\"row\"><div class=\"col-25\"><label>Password:</label></div>");
-    APPEND("<div class=\"col-50\"><input type=\"password\" name=\"password\"></div>");
-    APPEND("<div class=\"col-25\"><input type=\"submit\" value=\"Connect\"></div></div></form>");
+    // Wi-Fi Form
+    append_to_buffer(&html, &buffer_size, &position, "<form action=\"\" method=\"post\"><div class=\"row\"><div class=\"col-25\"><label>SSID:</label></div>");
+    append_to_buffer(&html, &buffer_size, &position, "<div class=\"col-50\"><input type=\"text\" name=\"ssid\"></div></div>");
+    append_to_buffer(&html, &buffer_size, &position, "<div class=\"row\"><div class=\"col-25\"><label>Password:</label></div>");
+    append_to_buffer(&html, &buffer_size, &position, "<div class=\"col-50\"><input type=\"password\" name=\"password\"></div>");
+    append_to_buffer(&html, &buffer_size, &position, "<div class=\"col-25\"><input type=\"submit\" value=\"Connect\"></div></div></form>");
 
     // Timezone Form
-    APPEND("<form action=\"\" method=\"post\"><div class=\"row\"><div class=\"col-25\"><label>Timezone</label></div><div class=\"col-50\">");
+    append_to_buffer(&html, &buffer_size, &position, "<form action=\"\" method=\"post\"><div class=\"row\"><div class=\"col-25\"><label>Timezone</label></div><div class=\"col-50\">");
     char *timezone_select = generateSelectList();
     if (timezone_select) {
-        APPEND("%s", timezone_select);
+        append_to_buffer(&html, &buffer_size, &position, "%s", timezone_select);
         free(timezone_select);
     }
-    APPEND("</div><div class=\"col-25\"><input type=\"submit\" value=\"Set\"></div></div></form>");
+    append_to_buffer(&html, &buffer_size, &position, "</div><div class=\"col-25\"><input type=\"submit\" value=\"Set\"></div></div></form>");
 
     // Date & Time Form
-    APPEND("<form action=\"\" method=\"post\"><div class=\"row\"><div class=\"col-25\"><label>Date and Time</label></div>");
-    APPEND("<div class=\"col-50\"><input type=\"datetime-local\" id=\"datetime\"></div>");
-    APPEND("<div class=\"col-25\"><input type=\"submit\" value=\"Set\"></div></div></form>");
+    append_to_buffer(&html, &buffer_size, &position, "<form action=\"\" method=\"post\"><div class=\"row\"><div class=\"col-25\"><label>Date and Time</label></div>");
+    append_to_buffer(&html, &buffer_size, &position, "<div class=\"col-50\"><input type=\"datetime-local\" name=\"datetime\"></div>");
+    append_to_buffer(&html, &buffer_size, &position, "<div class=\"col-25\"><input type=\"submit\" value=\"Set\"></div></div></form>");
 
     // Rewind & Forward Buttons
-    APPEND("<div class=\"row\"><div class=\"col-50\"><form action=\"\" method=\"post\">");
-    APPEND("<input type=\"submit\" style=\"float:left\" name=\"Rewind\" value=\"Rewind\"/></form></div>");
-    APPEND("<div class=\"col-50\"><form action=\"\" method=\"post\">");
-    APPEND("<input type=\"submit\" style=\"float:right\" name=\"Forward\" value=\"Forward\"/></form></div></div></div></body></html>");
+    append_to_buffer(&html, &buffer_size, &position, "<div class=\"row\"><div class=\"col-50\"><form action=\"\" method=\"post\">");
+    append_to_buffer(&html, &buffer_size, &position, "<input type=\"submit\" style=\"float:left\" name=\"Rewind\" value=\"Rewind\"/></form></div>");
+    append_to_buffer(&html, &buffer_size, &position, "<div class=\"col-50\"><form action=\"\" method=\"post\">");
+    append_to_buffer(&html, &buffer_size, &position, "<input type=\"submit\" style=\"float:right\" name=\"Forward\" value=\"Forward\"/></form></div></div>");
+    append_to_buffer(&html, &buffer_size, &position, "</div></body></html>");
 
     return html;
 }

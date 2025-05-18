@@ -17,9 +17,6 @@
 
 #include "gpio_definitions.h"
 
-#define WIFI_SSID "WiFi-12A6"
-#define WIFI_PASSWORD "04371304"
-
 void getClock(void *pvParameters)
 {
 	
@@ -46,19 +43,24 @@ void app_main(void)
     //**    Initialise NVS      **
     //----------------------------
     init_nvs();
+    set_TZ(NULL);
+    // set_value_in_nvs("ssid", "WiFi-12A6");
+    // set_value_in_nvs("password", "04371304");
+
+    //----------------------------
+    //**    Initialise Wi-Fi    **
+    //----------------------------
+
+    wifi_init();
+
+    static httpd_handle_t server = NULL;
+    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_AP_STAIPASSIGNED, &connect_handler, &server));
 
     //----------------------------
     //**    Initialise Time     **
     //----------------------------
-        
-    set_TZ(NULL);
     
-    // ESP_ERROR_CHECK(wifi_init());
-    // wifi_connect(WIFI_SSID, WIFI_PASSWORD);
-    // start_webserver();
-
-    xTaskCreate(set_time, "Set Time", 4 * 1024, NULL, 3, NULL);
-
+    create_set_time_task();
 
     //----------------------------
     //**   Initialise Sensor    **
@@ -75,13 +77,10 @@ void app_main(void)
     //**    Initialise Motor    **
     //----------------------------
 
-    static httpd_handle_t server = NULL;
-    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_AP_STAIPASSIGNED, &connect_handler, &server));
-
     //----------------------------
     //**      Loop Update       **
     //----------------------------
 
-    xTaskCreate(getClock, "Show Time", 4*1024, NULL, 3, NULL);
+    // xTaskCreate(getClock, "Show Time", 4*1024, NULL, 3, NULL);
 }
 
