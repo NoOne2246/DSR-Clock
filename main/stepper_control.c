@@ -1,5 +1,7 @@
 #include "stepper_control.h"
 #include "gpio_definitions.h"
+#include "AccelStepper.h"
+
 
 // Define stepper motor pins and AccelStepper object
 
@@ -15,6 +17,6 @@
 //     Stepper_Min.setAcceleration(500); // Set acceleration
 // }
 
-void homeStepper() {
-    
-}
+// Function declarations
+void stepper_init(){}
+void homeStepper(){}
