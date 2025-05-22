@@ -2,6 +2,7 @@
 #include "gpio_definitions.h"
 #include "AccelStepper.h"
 
+#include "stepper.h"
 
 // Define stepper motor pins and AccelStepper object
 

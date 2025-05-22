@@ -50,13 +50,13 @@ typedef struct
 } multiStepper_t;
 
 /// Constructor
-extern void initMultiStepper(multiStepper_t* multistepper);
+extern void mstepper_initialize(multiStepper_t* multistepper);
 
 /// Add a stepper to the set of managed steppers
 /// There is an upper limit of MULTISTEPPER_MAX_STEPPERS = 10 to the number of steppers that can be managed
 /// \param[in] stepper Reference to a stepper to add to the managed list
 /// \return 1 if successful. false if the number of managed steppers would exceed MULTISTEPPER_MAX_STEPPERS
-extern uint8_t addStepperMulti(multiStepper_t* multistepper, accelstepper_t* motor);
+extern uint8_t mstepper_addStepper(multiStepper_t* multistepper, accelstepper_t* motor);
 
 /// Set the target positions of all managed steppers 
 /// according to a coordinate array.
@@ -65,19 +65,19 @@ extern uint8_t addStepperMulti(multiStepper_t* multistepper, accelstepper_t* mot
 /// \param[in] absolute An array of desired absolute stepper positions. absolute[0] will be used to set
 /// the absolute position of the first stepper added by addStepper() etc. The array must be at least as long as 
 /// the number of steppers that have been added by addStepper, else results are undefined.
-extern void moveToMulti(multiStepper_t* multistepper, long _absolute[]);
+extern void msteppeer_moveTo(multiStepper_t* multistepper, long _absolute[]);
 
 
-/// Calls runSpeed() on all the managed steppers
+/// Calls astepper_runSpeed() on all the managed steppers
 /// that have not acheived their target position.
 /// \return 1 if any stepper is still in the process of running to its target position.
-extern uint8_t runMulti(multiStepper_t* multistepper);
+extern uint8_t mstepper_run(multiStepper_t* multistepper);
 
 
 /// Runs all managed steppers until they acheived their target position.
 /// Blocks until all that position is acheived. If you dont
 /// want blocking consider using run() instead.
-extern void runSpeedToPositionMulti();
+extern void mstepper_runSpeedToPosition();
 
 
 /// @example MultiStepper.pde

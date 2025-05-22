@@ -1,8 +1,8 @@
 dependencies:
-  Stepper:
+  accelstepper:
     dependencies: []
     source:
-      path: W:\github\DSR-Clock\components\Stepper
+      path: W:\github\DSR-Clock\components\accelstepper
       type: local
     version: '*'
   ds3231:
@@ -21,10 +21,24 @@ dependencies:
     source:
       type: idf
     version: 5.4.1
+  stepper:
+    dependencies: []
+    source:
+      path: W:\github\DSR-Clock\components\stepper
+      type: local
+    version: '*'
+  tmc2209:
+    dependencies: []
+    source:
+      path: W:\github\DSR-Clock\components\tmc2209
+      type: local
+    version: '*'
 direct_dependencies:
-- Stepper
+- accelstepper
 - ds3231
 - esp_idf_lib_helpers
-manifest_hash: bc23c2c72074add79f773863bcf1e04c69ceb201246220fbb4332081a21982b8
+- stepper
+- tmc2209
+manifest_hash: 0b94174c1aa9ffd9a4a7f00361fb0691807361264950e8d6611a545ccca2160e
 target: esp32c3
 version: 2.0.0

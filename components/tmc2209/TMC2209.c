@@ -35,18 +35,18 @@ typedef struct
   DatagramType type;
   union
   {
-    WriteReadReplyDatagram writeRead;
-    ReadRequestDatagram readRequest;
+    tmc_WriteReadReplyDatagram_t writeRead;
+    tmc_ReadRequestDatagram_t readRequest;
   } datagram;
 } DatagramContainer;
 
- void initialize(TMC2209_t *TMC, SerialAddress serial_address);
+static void initialize(TMC2209_t *TMC, tmc_SerialAddress serial_address);
 static int serialAvailable(TMC2209_t *TMC);
 static size_t serialWrite(TMC2209_t *TMC, uint8_t c);
 static int serialRead(TMC2209_t *TMC);
 static void serialFlush(TMC2209_t *TMC);
 
-static void setOperationModeToSerial(TMC2209_t *TMC, SerialAddress serial_address);
+static void setOperationModeToSerial(TMC2209_t *TMC, tmc_SerialAddress serial_address);
 static void setRegistersToDefaults(TMC2209_t *TMC);
 static void readAndStoreRegisters(TMC2209_t *TMC);
 static bool serialOperationMode(TMC2209_t *TMC);
@@ -54,10 +54,10 @@ static void minimizeMotorCurrent(TMC2209_t *TMC);
 
 static uint32_t reverseData(uint32_t data);
 
-static uint8_t calculateCrcWrite(WriteReadReplyDatagram datagram, uint8_t datagram_size);
-static uint8_t calculateCrcRead(ReadRequestDatagram datagram, uint8_t datagram_size);
-static void sendDatagramUnidirectional(TMC2209_t *TMC, WriteReadReplyDatagram datagram, uint8_t datagram_size);
-static void sendDatagramBidirectional(TMC2209_t *TMC, ReadRequestDatagram datagram, uint8_t datagram_size);
+static uint8_t calculateCrcWrite(tmc_WriteReadReplyDatagram_t datagram, uint8_t datagram_size);
+static uint8_t calculateCrcRead(tmc_ReadRequestDatagram_t datagram, uint8_t datagram_size);
+static void sendDatagramUnidirectional(TMC2209_t *TMC, tmc_WriteReadReplyDatagram_t datagram, uint8_t datagram_size);
+static void sendDatagramBidirectional(TMC2209_t *TMC, tmc_ReadRequestDatagram_t datagram, uint8_t datagram_size);
 
 static void write(TMC2209_t *TMC, uint8_t register_address, uint32_t data);
 static uint32_t read(TMC2209_t *TMC, uint8_t register_address);
@@ -81,7 +81,7 @@ static uint32_t readPwmConfigBytes(TMC2209_t *TMC);
 static uint32_t constrain_(uint32_t value, uint32_t low, uint32_t high);
 static uint8_t map(uint8_t value, uint8_t fromLow, uint8_t fromHigh, uint8_t toLow, uint8_t toHigh);
 
-void init_TMC2209(TMC2209_t *tmc)
+void tmc_initialize(TMC2209_t *tmc)
 {
   tmc->hardware_serial_port_ = UART_NUM_MAX;
   tmc->serial_baud_rate_ = 115200;
@@ -91,7 +91,7 @@ void init_TMC2209(TMC2209_t *tmc)
   tmc->toff_ = TOFF_DEFAULT;
 }
 
-void setup_TMC2209(TMC2209_t *TMC, uart_port_t uart_port, long serial_baud_rate, SerialAddress serial_address, gpio_num_t alternate_rx_pin, gpio_num_t alternate_tx_pin)
+void tmc_setup(TMC2209_t *TMC, uart_port_t uart_port, long serial_baud_rate, tmc_SerialAddress serial_address, gpio_num_t alternate_rx_pin, gpio_num_t alternate_tx_pin)
 {
 
   TMC->hardware_serial_port_ = uart_port;
@@ -124,7 +124,7 @@ void setup_TMC2209(TMC2209_t *TMC, uart_port_t uart_port, long serial_baud_rate,
 
 // unidirectional methods
 
-void setHardwareEnablePin(TMC2209_t *TMC, gpio_num_t hardware_enable_pin)
+void tmc_setHardwareEnablePin(TMC2209_t *TMC, gpio_num_t hardware_enable_pin)
 {
   TMC->hardware_enable_pin_ = hardware_enable_pin;
   if (TMC->hardware_enable_pin_ != GPIO_NUM_NC)
@@ -134,7 +134,7 @@ void setHardwareEnablePin(TMC2209_t *TMC, gpio_num_t hardware_enable_pin)
   }
 }
 
-void enable_TMC2209(TMC2209_t *TMC)
+void tmc_enable(TMC2209_t *TMC)
 {
   if (TMC->hardware_enable_pin_ != GPIO_NUM_NC)
   {
@@ -144,7 +144,7 @@ void enable_TMC2209(TMC2209_t *TMC)
   writeStoredChopperConfig(TMC);
 }
 
-void disable_TMC2209(TMC2209_t *TMC)
+void tmc_disable(TMC2209_t *TMC)
 {
   if (TMC->hardware_enable_pin_ != GPIO_NUM_NC)
   {
@@ -154,7 +154,7 @@ void disable_TMC2209(TMC2209_t *TMC)
   writeStoredChopperConfig(TMC);
 }
 
-void setMicrostepsPerStep(TMC2209_t *TMC, uint16_t microsteps_per_step)
+void tmc_setMicrostepsPerStep(TMC2209_t *TMC, uint16_t microsteps_per_step)
 {
   uint16_t microsteps_per_step_shifted = constrain_(microsteps_per_step,
                                                     MICROSTEPS_PER_STEP_MIN,
@@ -166,10 +166,10 @@ void setMicrostepsPerStep(TMC2209_t *TMC, uint16_t microsteps_per_step)
     microsteps_per_step_shifted = microsteps_per_step_shifted >> 1;
     ++exponent;
   }
-  setMicrostepsPerStepPowerOfTwo(TMC, exponent);
+  tmc_setMicrostepsPerStepPowerOfTwo(TMC, exponent);
 }
 
-void setMicrostepsPerStepPowerOfTwo(TMC2209_t *TMC, uint8_t exponent)
+void tmc_setMicrostepsPerStepPowerOfTwo(TMC2209_t *TMC, uint8_t exponent)
 {
   switch (exponent)
   {
@@ -223,28 +223,28 @@ void setMicrostepsPerStepPowerOfTwo(TMC2209_t *TMC, uint8_t exponent)
   writeStoredChopperConfig(TMC);
 }
 
-void setRunCurrent(TMC2209_t *TMC, uint8_t percent)
+void tmc_setRunCurrent(TMC2209_t *TMC, uint8_t percent)
 {
   uint8_t run_current = percentToCurrentSetting(percent);
   TMC->driver_current_.irun = run_current;
   writeStoredDriverCurrent(TMC);
 }
 
-void setHoldCurrent(TMC2209_t *TMC, uint8_t percent)
+void tmc_setHoldCurrent(TMC2209_t *TMC, uint8_t percent)
 {
   uint8_t hold_current = percentToCurrentSetting(percent);
   TMC->driver_current_.ihold = hold_current;
   writeStoredDriverCurrent(TMC);
 }
 
-void setHoldDelay(TMC2209_t *TMC, uint8_t percent)
+void tmc_setHoldDelay(TMC2209_t *TMC, uint8_t percent)
 {
   uint8_t hold_delay = percentToHoldDelaySetting(percent);
   TMC->driver_current_.iholddelay = hold_delay;
   writeStoredDriverCurrent(TMC);
 }
 
-void setAllCurrentValues(TMC2209_t *TMC, uint8_t run_current_percent,
+void tmc_setAllCurrentValues(TMC2209_t *TMC, uint8_t run_current_percent,
                          uint8_t hold_current_percent,
                          uint8_t hold_delay_percent)
 {
@@ -258,7 +258,7 @@ void setAllCurrentValues(TMC2209_t *TMC, uint8_t run_current_percent,
   writeStoredDriverCurrent(TMC);
 }
 
-void setRMSCurrent(TMC2209_t *TMC, uint16_t mA, float rSense, float holdMultiplier)
+void tmc_setRMSCurrent(TMC2209_t *TMC, uint16_t mA, float rSense, float holdMultiplier)
 {
   // Taken from https://github.com/teemuatlut/TMCStepper/blob/74e8e6881adc9241c2e626071e7328d7652f361a/src/source/TMCStepper.cpp#L41.
 
@@ -266,12 +266,12 @@ void setRMSCurrent(TMC2209_t *TMC, uint16_t mA, float rSense, float holdMultipli
   // If Current Scale is too low, turn on high sensitivity R_sense and calculate again
   if (CS < 16)
   {
-    enableVSense(TMC);
+    tmc_enableVSense(TMC);
     CS = 32.0 * 1.41421 * mA / 1000.0 * (rSense + 0.02) / 0.180 - 1;
   }
   else
   { // If CS >= 16, turn off high_sense_r
-    disableVSense(TMC);
+    tmc_disableVSense(TMC);
   }
 
   if (CS > 31)
@@ -284,139 +284,139 @@ void setRMSCurrent(TMC2209_t *TMC, uint16_t mA, float rSense, float holdMultipli
   writeStoredDriverCurrent(TMC);
 }
 
-void enableDoubleEdge(TMC2209_t *TMC)
+void tmc_enableDoubleEdge(TMC2209_t *TMC)
 {
   TMC->chopper_config_.double_edge = DOUBLE_EDGE_ENABLE;
   writeStoredChopperConfig(TMC);
 }
 
-void disableDoubleEdge(TMC2209_t *TMC)
+void tmc_disableDoubleEdge(TMC2209_t *TMC)
 {
   TMC->chopper_config_.double_edge = DOUBLE_EDGE_DISABLE;
   writeStoredChopperConfig(TMC);
 }
 
-void enableVSense(TMC2209_t *TMC)
+void tmc_enableVSense(TMC2209_t *TMC)
 {
   TMC->chopper_config_.vsense = VSENSE_ENABLE;
   writeStoredChopperConfig(TMC);
 }
 
-void disableVSense(TMC2209_t *TMC)
+void tmc_disableVSense(TMC2209_t *TMC)
 {
   TMC->chopper_config_.vsense = VSENSE_DISABLE;
   writeStoredChopperConfig(TMC);
 }
 
-void enableInverseMotorDirection(TMC2209_t *TMC)
+void tmc_enableInverseMotorDirection(TMC2209_t *TMC)
 {
   TMC->global_config_.shaft = 1;
   writeStoredGlobalConfig(TMC);
 }
 
-void disableInverseMotorDirection(TMC2209_t *TMC)
+void tmc_disableInverseMotorDirection(TMC2209_t *TMC)
 {
   TMC->global_config_.shaft = 0;
   writeStoredGlobalConfig(TMC);
 }
 
-void setStandstillMode(TMC2209_t *TMC, StandstillMode mode)
+void tmc_setStandstillMode(TMC2209_t *TMC, StandstillMode mode)
 {
   TMC->pwm_config_.freewheel = mode;
   writeStoredPwmConfig(TMC);
 }
 
-void enableAutomaticCurrentScaling(TMC2209_t *TMC)
+void tmc_enableAutomaticCurrentScaling(TMC2209_t *TMC)
 {
   TMC->pwm_config_.pwm_autoscale = STEPPER_DRIVER_FEATURE_ON;
   writeStoredPwmConfig(TMC);
 }
 
-void disableAutomaticCurrentScaling(TMC2209_t *TMC)
+void tmc_disableAutomaticCurrentScaling(TMC2209_t *TMC)
 {
   TMC->pwm_config_.pwm_autoscale = STEPPER_DRIVER_FEATURE_OFF;
   writeStoredPwmConfig(TMC);
 }
 
-void enableAutomaticGradientAdaptation(TMC2209_t *TMC)
+void tmc_enableAutomaticGradientAdaptation(TMC2209_t *TMC)
 {
   TMC->pwm_config_.pwm_autograd = STEPPER_DRIVER_FEATURE_ON;
   writeStoredPwmConfig(TMC);
 }
 
-void disableAutomaticGradientAdaptation(TMC2209_t *TMC)
+void tmc_disableAutomaticGradientAdaptation(TMC2209_t *TMC)
 {
   TMC->pwm_config_.pwm_autograd = STEPPER_DRIVER_FEATURE_OFF;
   writeStoredPwmConfig(TMC);
 }
 
-void setPwmOffset(TMC2209_t *TMC, uint8_t pwm_amplitude)
+void tmc_setPwmOffset(TMC2209_t *TMC, uint8_t pwm_amplitude)
 {
   TMC->pwm_config_.pwm_offset = pwm_amplitude;
   writeStoredPwmConfig(TMC);
 }
 
-void setPwmGradient(TMC2209_t *TMC, uint8_t pwm_amplitude)
+void tmc_setPwmGradient(TMC2209_t *TMC, uint8_t pwm_amplitude)
 {
   TMC->pwm_config_.pwm_grad = pwm_amplitude;
   writeStoredPwmConfig(TMC);
 }
 
-void setPowerDownDelay(TMC2209_t *TMC, uint8_t power_down_delay)
+void tmc_setPowerDownDelay(TMC2209_t *TMC, uint8_t power_down_delay)
 {
   write(TMC, ADDRESS_TPOWERDOWN, power_down_delay);
 }
 
-void setReplyDelay(TMC2209_t *TMC, uint8_t reply_delay)
+void tmc_setReplyDelay(TMC2209_t *TMC, uint8_t reply_delay)
 {
   if (reply_delay > REPLY_DELAY_MAX)
   {
     reply_delay = REPLY_DELAY_MAX;
   }
-  ReplyDelay reply_delay_data;
+  tmc_ReplyDelay_t reply_delay_data;
   reply_delay_data.bytes = 0;
   reply_delay_data.replydelay = reply_delay;
   write(TMC, ADDRESS_REPLYDELAY, reply_delay_data.bytes);
 }
 
-void moveAtVelocity(TMC2209_t *TMC, int32_t microsteps_per_period)
+void tmc_moveAtVelocity(TMC2209_t *TMC, int32_t microsteps_per_period)
 {
   write(TMC, ADDRESS_VACTUAL, microsteps_per_period);
 }
 
-void moveUsingStepDirInterface(TMC2209_t *TMC)
+void tmc_moveUsingStepDirInterface(TMC2209_t *TMC)
 {
   write(TMC, ADDRESS_VACTUAL, VACTUAL_STEP_DIR_INTERFACE);
 }
 
-void enableStealthChop(TMC2209_t *TMC)
+void tmc_enableStealthChop(TMC2209_t *TMC)
 {
   TMC->global_config_.enable_spread_cycle = 0;
   writeStoredGlobalConfig(TMC);
 }
 
-void disableStealthChop(TMC2209_t *TMC)
+void tmc_disableStealthChop(TMC2209_t *TMC)
 {
   TMC->global_config_.enable_spread_cycle = 1;
   writeStoredGlobalConfig(TMC);
 }
 
-void setCoolStepDurationThreshold(TMC2209_t *TMC, uint32_t duration_threshold)
+void tmc_setCoolStepDurationThreshold(TMC2209_t *TMC, uint32_t duration_threshold)
 {
   write(TMC, ADDRESS_TCOOLTHRS, duration_threshold);
 }
 
-void setStealthChopDurationThreshold(TMC2209_t *TMC, uint32_t duration_threshold)
+void tmc_setStealthChopDurationThreshold(TMC2209_t *TMC, uint32_t duration_threshold)
 {
   write(TMC, ADDRESS_TPWMTHRS, duration_threshold);
 }
 
-void setStallGuardThreshold(TMC2209_t *TMC, uint8_t stall_guard_threshold)
+void tmc_setStallGuardThreshold(TMC2209_t *TMC, uint8_t stall_guard_threshold)
 {
   write(TMC, ADDRESS_SGTHRS, stall_guard_threshold);
 }
 
-void enableCoolStep(TMC2209_t *TMC, uint8_t lower_threshold, uint8_t upper_threshold)
+void tmc_enableCoolStep(TMC2209_t *TMC, uint8_t lower_threshold, uint8_t upper_threshold)
 {
   lower_threshold = constrain_(lower_threshold, SEMIN_MIN, SEMIN_MAX);
   TMC->cool_config_.semin = lower_threshold;
@@ -426,44 +426,44 @@ void enableCoolStep(TMC2209_t *TMC, uint8_t lower_threshold, uint8_t upper_thres
   TMC->cool_step_enabled_ = true;
 }
 
-void disableCoolStep(TMC2209_t *TMC)
+void tmc_disableCoolStep(TMC2209_t *TMC)
 {
   TMC->cool_config_.semin = SEMIN_OFF;
   write(TMC, ADDRESS_COOLCONF, TMC->cool_config_.bytes);
   TMC->cool_step_enabled_ = false;
 }
 
-void setCoolStepCurrentIncrement(TMC2209_t *TMC, CurrentIncrement current_increment)
+void tmc_setCoolStepCurrentIncrement(TMC2209_t *TMC, CurrentIncrement current_increment)
 {
   TMC->cool_config_.seup = current_increment;
   write(TMC, ADDRESS_COOLCONF, TMC->cool_config_.bytes);
 }
 
-void setCoolStepMeasurementCount(TMC2209_t *TMC, MeasurementCount measurement_count)
+void tmc_setCoolStepMeasurementCount(TMC2209_t *TMC, MeasurementCount measurement_count)
 {
   TMC->cool_config_.sedn = measurement_count;
   write(TMC, ADDRESS_COOLCONF, TMC->cool_config_.bytes);
 }
 
-void enableAnalogCurrentScaling(TMC2209_t *TMC)
+void tmc_enableAnalogCurrentScaling(TMC2209_t *TMC)
 {
   TMC->global_config_.i_scale_analog = 1;
   writeStoredGlobalConfig(TMC);
 }
 
-void disableAnalogCurrentScaling(TMC2209_t *TMC)
+void tmc_disableAnalogCurrentScaling(TMC2209_t *TMC)
 {
   TMC->global_config_.i_scale_analog = 0;
   writeStoredGlobalConfig(TMC);
 }
 
-void useExternalSenseResistors(TMC2209_t *TMC)
+void tmc_useExternalSenseResistors(TMC2209_t *TMC)
 {
   TMC->global_config_.internal_rsense = 0;
   writeStoredGlobalConfig(TMC);
 }
 
-void useInternalSenseResistors(TMC2209_t *TMC)
+void tmc_useInternalSenseResistors(TMC2209_t *TMC)
 {
   TMC->global_config_.internal_rsense = 1;
   writeStoredGlobalConfig(TMC);
@@ -471,38 +471,38 @@ void useInternalSenseResistors(TMC2209_t *TMC)
 
 // bidirectional methods
 
-uint8_t getVersion(TMC2209_t *TMC)
+uint8_t tmc_getVersion(TMC2209_t *TMC)
 {
-  Input input;
+  tmc_Input_t input;
   input.bytes = read(TMC, ADDRESS_IOIN);
 
   return input.version;
 }
 
-bool isCommunicating(TMC2209_t *TMC)
+bool tmc_isCommunicating(TMC2209_t *TMC)
 {
-  return (getVersion(TMC) == VERSION);
+  return (tmc_getVersion(TMC) == VERSION);
 }
 
-bool isSetupAndCommunicating(TMC2209_t *TMC)
+bool tmc_isSetupAndCommunicating(TMC2209_t *TMC)
 {
   return serialOperationMode(TMC);
 }
 
-bool isCommunicatingButNotSetup(TMC2209_t *TMC)
+bool tmc_isCommunicatingButNotSetup(TMC2209_t *TMC)
 {
-  return (isCommunicating(TMC) && (!isSetupAndCommunicating(TMC)));
+  return (tmc_isCommunicating(TMC) && (!tmc_isSetupAndCommunicating(TMC)));
 }
 
-bool hardwareDisabled(TMC2209_t *TMC)
+bool tmc_hardwareDisabled(TMC2209_t *TMC)
 {
-  Input input;
+  tmc_Input_t input;
   input.bytes = read(TMC, ADDRESS_IOIN);
 
   return input.enn;
 }
 
-uint16_t getMicrostepsPerStep(TMC2209_t *TMC)
+uint16_t tmc_getMicrostepsPerStep(TMC2209_t *TMC)
 {
   uint16_t microsteps_per_step_exponent;
   switch (TMC->chopper_config_.mres)
@@ -557,10 +557,10 @@ uint16_t getMicrostepsPerStep(TMC2209_t *TMC)
   return 1 << microsteps_per_step_exponent;
 }
 
-Settings getSettings(TMC2209_t *TMC)
+tmc_Settings_t tmc_getSettings(TMC2209_t *TMC)
 {
-  Settings settings;
-  settings.is_communicating = isCommunicating(TMC);
+  tmc_Settings_t settings;
+  settings.is_communicating = tmc_isCommunicating(TMC);
 
   if (settings.is_communicating)
   {
@@ -568,7 +568,7 @@ Settings getSettings(TMC2209_t *TMC)
 
     settings.is_setup = TMC->global_config_.pdn_disable;
     settings.software_enabled = (TMC->chopper_config_.toff > TOFF_DISABLE);
-    settings.microsteps_per_step = getMicrostepsPerStep(TMC);
+    settings.microsteps_per_step = tmc_getMicrostepsPerStep(TMC);
     settings.inverse_motor_direction_enabled = TMC->global_config_.shaft;
     settings.stealth_chop_enabled = !(TMC->global_config_.enable_spread_cycle);
     settings.standstill_mode = TMC->pwm_config_.freewheel;
@@ -612,101 +612,101 @@ Settings getSettings(TMC2209_t *TMC)
   return settings;
 }
 
-Status getStatus(TMC2209_t *TMC)
+tmc_Status_t tmc_getStatus(TMC2209_t *TMC)
 {
-  DriveStatus drive_status;
+  tmc_DriveStatus_t drive_status;
   drive_status.bytes = 0;
   drive_status.bytes = read(TMC, ADDRESS_DRV_STATUS);
   return drive_status.status;
 }
 
-GlobalStatus getGlobalStatus(TMC2209_t *TMC)
+tmc_GlobalStatus_t tmc_getGlobalStatus(TMC2209_t *TMC)
 {
-  GlobalStatusUnion global_status_union;
+  tmc_GlobalStatusUnion_t global_status_union;
   global_status_union.bytes = 0;
   global_status_union.bytes = read(TMC, ADDRESS_GSTAT);
   return global_status_union.global_status;
 }
 
-void clearReset(TMC2209_t *TMC)
+void tmc_clearReset(TMC2209_t *TMC)
 {
-  GlobalStatusUnion global_status_union;
+  tmc_GlobalStatusUnion_t global_status_union;
   global_status_union.bytes = 0;
   global_status_union.global_status.reset = 1;
   write(TMC, ADDRESS_GSTAT, global_status_union.bytes);
 }
 
-void clearDriveError(TMC2209_t *TMC)
+void tmc_clearDriveError(TMC2209_t *TMC)
 {
-  GlobalStatusUnion global_status_union;
+  tmc_GlobalStatusUnion_t global_status_union;
   global_status_union.bytes = 0;
   global_status_union.global_status.drv_err = 1;
   write(TMC, ADDRESS_GSTAT, global_status_union.bytes);
 }
 
-uint8_t getInterfaceTransmissionCounter(TMC2209_t *TMC)
+uint8_t tmc_getInterfaceTransmissionCounter(TMC2209_t *TMC)
 {
   return read(TMC, ADDRESS_IFCNT);
 }
 
-uint32_t getInterstepDuration(TMC2209_t *TMC)
+uint32_t tmc_getInterstepDuration(TMC2209_t *TMC)
 {
   return read(TMC, ADDRESS_TSTEP);
 }
 
-uint16_t getStallGuardResult(TMC2209_t *TMC)
+uint16_t tmc_getStallGuardResult(TMC2209_t *TMC)
 {
   return read(TMC, ADDRESS_SG_RESULT);
 }
 
-uint8_t getPwmScaleSum(TMC2209_t *TMC)
+uint8_t tmc_getPwmScaleSum(TMC2209_t *TMC)
 {
-  PwmScale pwm_scale;
+  tmc_PwmScale_t pwm_scale;
   pwm_scale.bytes = read(TMC, ADDRESS_PWM_SCALE);
 
   return pwm_scale.pwm_scale_sum;
 }
 
-int16_t getPwmScaleAuto(TMC2209_t *TMC)
+int16_t tmc_getPwmScaleAuto(TMC2209_t *TMC)
 {
-  PwmScale pwm_scale;
+  tmc_PwmScale_t pwm_scale;
   pwm_scale.bytes = read(TMC, ADDRESS_PWM_SCALE);
 
   return pwm_scale.pwm_scale_auto;
 }
 
-uint8_t getPwmOffsetAuto(TMC2209_t *TMC)
+uint8_t tmc_getPwmOffsetAuto(TMC2209_t *TMC)
 {
-  PwmAuto pwm_auto;
+  tmc_PwmAuto_t pwm_auto;
   pwm_auto.bytes = read(TMC, ADDRESS_PWM_AUTO);
 
   return pwm_auto.pwm_offset_auto;
 }
 
-uint8_t getPwmGradientAuto(TMC2209_t *TMC)
+uint8_t tmc_getPwmGradientAuto(TMC2209_t *TMC)
 {
-  PwmAuto pwm_auto;
+  tmc_PwmAuto_t pwm_auto;
   pwm_auto.bytes = read(TMC, ADDRESS_PWM_AUTO);
 
   return pwm_auto.pwm_gradient_auto;
 }
 
-uint16_t getMicrostepCounter(TMC2209_t *TMC)
+uint16_t tmc_getMicrostepCounter(TMC2209_t *TMC)
 {
   return read(TMC, ADDRESS_MSCNT);
 }
 
 // private
-static void initialize(TMC2209_t *TMC, SerialAddress serial_address)
+static void initialize(TMC2209_t *TMC, tmc_SerialAddress serial_address)
 {
   setOperationModeToSerial(TMC, serial_address);
   setRegistersToDefaults(TMC);
-  clearDriveError(TMC);
+  tmc_clearDriveError(TMC);
 
   minimizeMotorCurrent(TMC);
-  disable(TMC);
-  disableAutomaticCurrentScaling(TMC);
-  disableAutomaticGradientAdaptation(TMC);
+  tmc_disable(TMC);
+  tmc_disableAutomaticCurrentScaling(TMC);
+  tmc_disableAutomaticGradientAdaptation(TMC);
 }
 
 static int serialAvailable(TMC2209_t *TMC)
@@ -750,7 +750,7 @@ static void serialFlush(TMC2209_t *TMC)
   return;
 }
 
-static void setOperationModeToSerial(TMC2209_t *TMC, SerialAddress serial_address)
+static void setOperationModeToSerial(TMC2209_t *TMC, tmc_SerialAddress serial_address)
 {
   TMC->serial_address_ = serial_address;
 
@@ -763,7 +763,7 @@ static void setOperationModeToSerial(TMC2209_t *TMC, SerialAddress serial_addres
   writeStoredGlobalConfig(TMC);
 }
 
-void setRegistersToDefaults(TMC2209_t *TMC)
+static void setRegistersToDefaults(TMC2209_t *TMC)
 {
   TMC->driver_current_.bytes = 0;
   TMC->driver_current_.ihold = IHOLD_DEFAULT;
@@ -801,7 +801,7 @@ static void readAndStoreRegisters(TMC2209_t *TMC)
 
 bool serialOperationMode(TMC2209_t *TMC)
 {
-  GlobalConfig global_config;
+  tmc_GlobalConfig_t global_config;
   global_config.bytes = readGlobalConfigBytes(TMC);
 
   return global_config.pdn_disable;
@@ -828,7 +828,7 @@ static uint32_t reverseData(uint32_t data)
   return reversed_data;
 }
 
-static uint8_t calculateCrcWrite(WriteReadReplyDatagram datagram, uint8_t datagram_size)
+static uint8_t calculateCrcWrite(tmc_WriteReadReplyDatagram_t datagram, uint8_t datagram_size)
 {
   uint8_t crc = 0;
   uint8_t byte;
@@ -851,7 +851,7 @@ static uint8_t calculateCrcWrite(WriteReadReplyDatagram datagram, uint8_t datagr
   return crc;
 }
 
-static uint8_t calculateCrcRead(ReadRequestDatagram datagram, uint8_t datagram_size)
+static uint8_t calculateCrcRead(tmc_ReadRequestDatagram_t datagram, uint8_t datagram_size)
 {
   uint8_t crc = 0;
   uint8_t byte;
@@ -874,7 +874,7 @@ static uint8_t calculateCrcRead(ReadRequestDatagram datagram, uint8_t datagram_s
   return crc;
 }
 
-static void sendDatagramUnidirectional(TMC2209_t *TMC, WriteReadReplyDatagram datagram, uint8_t datagram_size)
+static void sendDatagramUnidirectional(TMC2209_t *TMC, tmc_WriteReadReplyDatagram_t datagram, uint8_t datagram_size)
 {
   uint8_t byte;
 
@@ -885,7 +885,7 @@ static void sendDatagramUnidirectional(TMC2209_t *TMC, WriteReadReplyDatagram da
   }
 }
 
-static void sendDatagramBidirectional(TMC2209_t *TMC, ReadRequestDatagram datagram, uint8_t datagram_size)
+static void sendDatagramBidirectional(TMC2209_t *TMC, tmc_ReadRequestDatagram_t datagram, uint8_t datagram_size)
 {
   uint8_t byte;
 
@@ -930,7 +930,7 @@ static void sendDatagramBidirectional(TMC2209_t *TMC, ReadRequestDatagram datagr
 
 static void write(TMC2209_t *TMC, uint8_t register_address, uint32_t data)
 {
-  WriteReadReplyDatagram write_datagram;
+  tmc_WriteReadReplyDatagram_t write_datagram;
   write_datagram.bytes = 0;
   write_datagram.sync = SYNC;
   write_datagram.serial_address = TMC->serial_address_;
@@ -944,7 +944,7 @@ static void write(TMC2209_t *TMC, uint8_t register_address, uint32_t data)
 
 static uint32_t read(TMC2209_t *TMC, uint8_t register_address)
 {
-  ReadRequestDatagram read_request_datagram;
+  tmc_ReadRequestDatagram_t read_request_datagram;
   read_request_datagram.bytes = 0;
   read_request_datagram.sync = SYNC;
   read_request_datagram.serial_address = TMC->serial_address_;
@@ -970,7 +970,7 @@ static uint32_t read(TMC2209_t *TMC, uint8_t register_address)
 
     uint64_t byte;
     uint8_t byte_count = 0;
-    WriteReadReplyDatagram read_reply_datagram;
+    tmc_WriteReadReplyDatagram_t read_reply_datagram;
     read_reply_datagram.bytes = 0;
     for (uint8_t i = 0; i < WRITE_READ_REPLY_DATAGRAM_SIZE; ++i)
     {

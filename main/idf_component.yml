@@ -4,5 +4,10 @@ dependencies:
   # Not sure if you need to explicitly depend on your dependencies dependencies, so maybe worth just trying only the ds3231
   esp_idf_lib_helpers:
     path: ../components/esp_idf_lib_helpers
-  Stepper:
-    path: ../components/Stepper
+  accelstepper:
+    path: ../components/accelstepper
+  tmc2209:
+    path: ../components/tmc2209
+  stepper:
+    path: ../components/stepper
+

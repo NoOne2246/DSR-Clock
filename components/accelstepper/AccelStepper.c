@@ -31,6 +31,7 @@
 #undef LOW
 #define LOW 0
 
+
 #ifdef DEBUG_MODE
 //Some debugging assistance
 void dump(uint8_t* p, int l)
@@ -46,25 +47,25 @@ void dump(uint8_t* p, int l)
 }
 #endif
 
-void moveTo(accelstepper_t* motor, long absolute)
+void astepper_moveTo(accelstepper_t* motor, long absolute)
 {
     if (motor->_targetPos != absolute)
     {
     	motor->_targetPos = absolute;
-		computeNewSpeed(motor);
+		astepper_computeNewSpeed(motor);
 		// compute new n?
     }
 }
 
-void move(accelstepper_t* motor, long relative)
+void astepper_move(accelstepper_t* motor, long relative)
 {
-    moveTo(motor, motor->_currentPos + relative);
+    astepper_moveTo(motor, motor->_currentPos + relative);
 }
 
 // Implements steps according to the current step interval
 // You must call this at least once per step
 // returns true if a step occurred
-uint8_t runSpeed(accelstepper_t* motor)
+uint8_t astepper_runSpeed(accelstepper_t* motor)
 {
     // Dont do anything unless we actually have a step interval
     if (!motor->_stepInterval) return 0; // false
@@ -82,7 +83,7 @@ uint8_t runSpeed(accelstepper_t* motor)
 			motor->_currentPos -= 1;
 		}
 
-		step(motor, motor->_currentPos);
+		astepper_step(motor, motor->_currentPos);
 
 		motor->_lastStepTime = time;
 
@@ -94,24 +95,24 @@ uint8_t runSpeed(accelstepper_t* motor)
     }
 }
 
-long distanceToGo(accelstepper_t* motor)
+long astepper_distanceToGo(accelstepper_t* motor)
 {
     return (motor->_targetPos - motor->_currentPos);
 }
 
-long targetPosition(accelstepper_t* motor)
+long astepper_targetPosition(accelstepper_t* motor)
 {
     return motor->_targetPos;
 }
 
-long currentPosition(accelstepper_t* motor)
+long astepper_currentPosition(accelstepper_t* motor)
 {
     return motor->_currentPos;
 }
 
 // Useful during initialisations or after initial positioning
 // Sets speed to 0
-void setCurrentPosition(accelstepper_t* motor, long position)
+void astepper_setCurrentPosition(accelstepper_t* motor, long position)
 {
 	motor->_targetPos = motor->_currentPos = position;
 	motor->_n = 0;
@@ -119,15 +120,15 @@ void setCurrentPosition(accelstepper_t* motor, long position)
 	motor->_speed = 0.0;
 }
 
-void computeNewSpeed(accelstepper_t* motor)
+void astepper_computeNewSpeed(accelstepper_t* motor)
 {
-    long distanceTo = distanceToGo(motor); // +ve is clockwise from curent location
+    long distanceTo = astepper_distanceToGo(motor); // +ve is clockwise from curent location
 
     long stepsToStop = (long)((motor->_speed * motor->_speed) / (2.0 * motor->_acceleration)); // Equation 16
 
     if (distanceTo == 0 && stepsToStop <= 1)
     {
-    	// We are at the target and its time to stop
+    	// We are at the target and its time to astepper_stop
     	motor->_stepInterval = 0;
     	motor->_speed = 0.0;
     	motor->_n = 0;
@@ -206,14 +207,14 @@ void computeNewSpeed(accelstepper_t* motor)
 // You must call this at least once per step, preferably in your main loop
 // If the motor is in the desired position, the cost is very small
 // returns true if the motor is still running to the target position.
-uint8_t run(accelstepper_t* motor)
+uint8_t astepper_run(accelstepper_t* motor)
 {
-    if (runSpeed(motor)) computeNewSpeed(motor);
+    if (astepper_runSpeed(motor)) astepper_computeNewSpeed(motor);
 
-    return motor->_speed != 0.0 || distanceToGo(motor) != 0;
+    return motor->_speed != 0.0 || astepper_distanceToGo(motor) != 0;
 }
 
-void InitStepper(accelstepper_t* motor, uint8_t interface, gpio_num_t GPIOxPin1, gpio_num_t GPIOxPin2, gpio_num_t GPIOxPin3, gpio_num_t GPIOxPin4, uint8_t enable)
+void astepper_initialize(accelstepper_t* motor, uint8_t interface, gpio_num_t GPIOxPin1, gpio_num_t GPIOxPin2, gpio_num_t GPIOxPin3, gpio_num_t GPIOxPin4, uint8_t enable)
 {
 	motor->_interface = interface;
 	motor->_currentPos = 0;
@@ -243,13 +244,13 @@ void InitStepper(accelstepper_t* motor, uint8_t interface, gpio_num_t GPIOxPin1,
     	motor->_pinInverted[i] = 0;
 
     if (enable)
-    	enableOutputs(motor);
+    	astepper_enableOutputs(motor);
 
     // Some reasonable default
-    setAcceleration(motor, 1);
+    astepper_setAcceleration(motor, 1);
 }
 
-void InitStepperFunct(accelstepper_t* motor, void (*forward)(), void (*backward)())
+void astepper_InitStepperFunct(accelstepper_t* motor, void (*forward)(), void (*backward)())
 {
 	motor->_interface = 0;
 	motor->_currentPos = 0;
@@ -281,10 +282,10 @@ void InitStepperFunct(accelstepper_t* motor, void (*forward)(), void (*backward)
     	motor->_pinInverted[i] = 0;
 
     // Some reasonable default
-    setAcceleration(motor, 1);
+    astepper_setAcceleration(motor, 1);
 }
 
-void setMaxSpeed(accelstepper_t* motor, float speed)
+void astepper_setMaxSpeed(accelstepper_t* motor, float speed)
 {
     if (motor->_maxSpeed != speed)
     {
@@ -294,17 +295,17 @@ void setMaxSpeed(accelstepper_t* motor, float speed)
 		if (motor->_n > 0)
 		{
 			motor->_n = (long)((motor->_speed * motor->_speed) / (2.0 * motor->_acceleration)); // Equation 16
-			computeNewSpeed(motor);
+			astepper_computeNewSpeed(motor);
 		}
     }
 }
 
-float maxSpeed(accelstepper_t* motor)
+float astepper_maxSpeed(accelstepper_t* motor)
 {
     return motor->_maxSpeed;
 }
 
-void setAcceleration(accelstepper_t* motor, float acceleration)
+void astepper_setAcceleration(accelstepper_t* motor, float acceleration)
 {
     if (acceleration == 0.0) return;
 	if (acceleration < 0.0)  acceleration = -acceleration;
@@ -315,18 +316,11 @@ void setAcceleration(accelstepper_t* motor, float acceleration)
 		// New c0 per Equation 7, with correction per Equation 15
     	motor->_c0 = 0.676 * sqrt(2.0 / acceleration) * 1000000.0;// Equation 15
     	motor->_acceleration = acceleration;
-		computeNewSpeed(motor);
+		astepper_computeNewSpeed(motor);
     }
 }
 
-float constrainSpeed(float value, float minimum, float maximum)
-{
-	if(value < minimum) return minimum;
-	else if(value > maximum) return maximum;
-	else return value;
-}
-
-void setSpeed(accelstepper_t* motor, float speed)
+void astepper_setSpeed(accelstepper_t* motor, float speed)
 {
     if (speed == motor->_speed)
         return;
@@ -346,42 +340,42 @@ void setSpeed(accelstepper_t* motor, float speed)
     motor->_speed = speed;
 }
 
-float speed(accelstepper_t* motor)
+float astepper_speed(accelstepper_t* motor)
 {
     return motor->_speed;
 }
 
 // Subclasses can override
-void step(accelstepper_t* motor, long step)
+void astepper_step(accelstepper_t* motor, long step)
 {
     switch (motor->_interface)
     {
         case FUNCTION:
-            step0(motor, step);
+            astepper_step0(motor, step);
             break;
 
 		case DRIVER:
-			step1(motor, step);
+			astepper_step1(motor, step);
 			break;
 
 		case FULL2WIRE:
-			step2(motor, step);
+			astepper_step2(motor, step);
 			break;
 
 		case FULL3WIRE:
-			step3(motor, step);
+			astepper_step3(motor, step);
 			break;
 
 		case FULL4WIRE:
-			step4(motor, step);
+			astepper_step4(motor, step);
 			break;
 
 		case HALF3WIRE:
-			step6(motor, step);
+			astepper_step6(motor, step);
 			break;
 
 		case HALF4WIRE:
-			step8(motor, step);
+			astepper_step8(motor, step);
 			break;
     }
 }
@@ -390,7 +384,7 @@ void step(accelstepper_t* motor, long step)
 // bit 0 of the mask corresponds to _pin[0]
 // bit 1 of the mask corresponds to _pin[1]
 // ....
-void setOutputPins(accelstepper_t* motor, uint8_t mask)
+void astepper_setOutputPins(accelstepper_t* motor, uint8_t mask)
 {
     uint8_t numpins = 2;
     if (motor->_interface == FULL4WIRE || motor->_interface == HALF4WIRE) numpins = 4;
@@ -404,7 +398,7 @@ void setOutputPins(accelstepper_t* motor, uint8_t mask)
 }
 
 // 0 pin step function (ie for functional usage)
-void step0(accelstepper_t* motor, long step)
+void astepper_step0(accelstepper_t* motor, long step)
 {
 	if (motor->_speed > 0)
 		motor->_forward();
@@ -415,15 +409,15 @@ void step0(accelstepper_t* motor, long step)
 // 1 pin step function (ie for stepper drivers)
 // This is passed the current step number (0 to 7)
 // Subclasses can override
-void step1(accelstepper_t* motor, long step)
+void astepper_step1(accelstepper_t* motor, long step)
 {
     // _pin[0] is step, _pin[1] is direction
-    setOutputPins(motor, motor->_direction ? 0b10 : 0b00); // Set direction first else get rogue pulses
-    setOutputPins(motor, motor->_direction ? 0b11 : 0b01); // step HIGH
+    astepper_setOutputPins(motor, motor->_direction ? 0b10 : 0b00); // Set direction first else get rogue pulses
+    astepper_setOutputPins(motor, motor->_direction ? 0b11 : 0b01); // step HIGH
     // Caution 200ns setup time
     // Delay the minimum allowed pulse width
 	vTaskDelay(motor->_minPulseWidth / (portTICK_PERIOD_MS * 1000));
-    setOutputPins(motor, motor->_direction ? 0b10 : 0b00); // step LOW
+    astepper_setOutputPins(motor, motor->_direction ? 0b10 : 0b00); // step LOW
 
 }
 
@@ -431,44 +425,44 @@ void step1(accelstepper_t* motor, long step)
 // 2 pin step function
 // This is passed the current step number (0 to 7)
 // Subclasses can override
-void step2(accelstepper_t* motor, long step)
+void astepper_step2(accelstepper_t* motor, long step)
 {
     switch (step & 0x3)
     {
 		case 0: /* 01 */
-			setOutputPins(motor, 0b10);
+			astepper_setOutputPins(motor, 0b10);
 			break;
 
 		case 1: /* 11 */
-			setOutputPins(motor, 0b11);
+			astepper_setOutputPins(motor, 0b11);
 			break;
 
 		case 2: /* 10 */
-			setOutputPins(motor, 0b01);
+			astepper_setOutputPins(motor, 0b01);
 			break;
 
 		case 3: /* 00 */
-			setOutputPins(motor, 0b00);
+			astepper_setOutputPins(motor, 0b00);
 			break;
     }
 }
 // 3 pin step function
 // This is passed the current step number (0 to 7)
 // Subclasses can override
-void step3(accelstepper_t* motor, long step)
+void astepper_step3(accelstepper_t* motor, long step)
 {
     switch (step % 3)
     {
 		case 0:    // 100
-			setOutputPins(motor, 0b100);
+			astepper_setOutputPins(motor, 0b100);
 			break;
 
 		case 1:    // 010
-			setOutputPins(motor, 0b010);
+			astepper_setOutputPins(motor, 0b010);
 			break;
 
 		case 2:    //001
-			setOutputPins(motor, 0b001);
+			astepper_setOutputPins(motor, 0b001);
 			break;
     }
 }
@@ -476,24 +470,24 @@ void step3(accelstepper_t* motor, long step)
 // 4 pin step function for half stepper
 // This is passed the current step number (0 to 7)
 // Subclasses can override
-void step4(accelstepper_t* motor, long step)
+void astepper_step4(accelstepper_t* motor, long step)
 {
     switch (step & 0x3)
     {
 		case 0:    // 1010
-			setOutputPins(motor, 0b0101);
+			astepper_setOutputPins(motor, 0b0101);
 			break;
 
 		case 1:    // 0110
-			setOutputPins(motor, 0b0110);
+			astepper_setOutputPins(motor, 0b0110);
 			break;
 
 		case 2:    //0101
-			setOutputPins(motor, 0b1010);
+			astepper_setOutputPins(motor, 0b1010);
 			break;
 
 		case 3:    //1001
-			setOutputPins(motor, 0b1001);
+			astepper_setOutputPins(motor, 0b1001);
 			break;
     }
 }
@@ -501,32 +495,32 @@ void step4(accelstepper_t* motor, long step)
 // 3 pin half step function
 // This is passed the current step number (0 to 7)
 // Subclasses can override
-void step6(accelstepper_t* motor, long step)
+void astepper_step6(accelstepper_t* motor, long step)
 {
     switch (step % 6)
     {
 		case 0:    // 100
-			setOutputPins(motor, 0b100);
+			astepper_setOutputPins(motor, 0b100);
 			break;
 
 		case 1:    // 110
-			setOutputPins(motor, 0b110);
+			astepper_setOutputPins(motor, 0b110);
 			break;
 
 		case 2:    // 010
-			setOutputPins(motor, 0b010);
+			astepper_setOutputPins(motor, 0b010);
 			break;
 
 		case 3:    // 011
-			setOutputPins(motor, 0b011);
+			astepper_setOutputPins(motor, 0b011);
 			break;
 
 		case 4:    // 001
-			setOutputPins(motor, 0b001);
+			astepper_setOutputPins(motor, 0b001);
 			break;
 
 		case 5:    // 101
-			setOutputPins(motor, 0b101);
+			astepper_setOutputPins(motor, 0b101);
 			break;
     }
 }
@@ -534,50 +528,50 @@ void step6(accelstepper_t* motor, long step)
 // 4 pin half step function
 // This is passed the current step number (0 to 7)
 // Subclasses can override
-void step8(accelstepper_t* motor, long step)
+void astepper_step8(accelstepper_t* motor, long step)
 {
     switch (step & 0x7)
     {
 		case 0:    // 1000
-			setOutputPins(motor, 0b1000);
+			astepper_setOutputPins(motor, 0b1000);
 			break;
 
 		case 1:    // 1100
-			setOutputPins(motor, 0b1100);
+			astepper_setOutputPins(motor, 0b1100);
 			break;
 
 		case 2:    // 0100
-			setOutputPins(motor, 0b0100);
+			astepper_setOutputPins(motor, 0b0100);
 			break;
 
 		case 3:    // 0110
-			setOutputPins(motor, 0b0110);
+			astepper_setOutputPins(motor, 0b0110);
 			break;
 
 		case 4:    // 0010
-			setOutputPins(motor, 0b0010);
+			astepper_setOutputPins(motor, 0b0010);
 			break;
 
 		case 5:    //0011
-			setOutputPins(motor, 0b0011);
+			astepper_setOutputPins(motor, 0b0011);
 			break;
 
 		case 6:    // 0001
-			setOutputPins(motor, 0b0001);
+			astepper_setOutputPins(motor, 0b0001);
 			break;
 
 		case 7:    //1001
-			setOutputPins(motor, 0b1001);
+			astepper_setOutputPins(motor, 0b1001);
 			break;
     }
 }
 
 // Prevents power consumption on the outputs
-void disableOutputs(accelstepper_t* motor)
+void astepper_disableOutputs(accelstepper_t* motor)
 {
     if (! motor->_interface) return;
 
-    setOutputPins(motor, 0); // Handles inversion automatically
+    astepper_setOutputPins(motor, 0); // Handles inversion automatically
 
     if (motor->_GPIOxEnablePin != GPIO_NUM_NC) // If enable pin used
     {
@@ -587,7 +581,7 @@ void disableOutputs(accelstepper_t* motor)
 	}
 }
 
-void enableOutputs(accelstepper_t* motor)
+void astepper_enableOutputs(accelstepper_t* motor)
 {
     if (! motor->_interface) return;
 
@@ -618,12 +612,12 @@ void enableOutputs(accelstepper_t* motor)
     }
 }
 
-void setMinPulseWidth(accelstepper_t* motor, unsigned int minWidth)
+void astepper_setMinPulseWidth(accelstepper_t* motor, unsigned int minWidth)
 {
 	motor->_minPulseWidth = minWidth;
 }
 
-void setEnablePin(accelstepper_t* motor, gpio_num_t GPIOxEnablePin)
+void astepper_setEnablePin(accelstepper_t* motor, gpio_num_t GPIOxEnablePin)
 {
 	motor->_GPIOxEnablePin = GPIOxEnablePin;
 
@@ -635,14 +629,14 @@ void setEnablePin(accelstepper_t* motor, gpio_num_t GPIOxEnablePin)
 	}
 }
 
-void setPinsInvertedStpDir(accelstepper_t* motor, uint8_t directionInvert, uint8_t stepInvert, uint8_t enableInvert)
+void astepper_setPinsInvertedStpDir(accelstepper_t* motor, uint8_t directionInvert, uint8_t stepInvert, uint8_t enableInvert)
 {
 	motor->_pinInverted[0] = stepInvert; // bool
 	motor->_pinInverted[1] = directionInvert; // bool
 	motor->_enableInverted = enableInvert; // bool
 }
 
-void setPinsInverted(accelstepper_t* motor, uint8_t pin1Invert, uint8_t pin2Invert, uint8_t pin3Invert, uint8_t pin4Invert, uint8_t enableInvert)
+void astepper_setPinsInverted(accelstepper_t* motor, uint8_t pin1Invert, uint8_t pin2Invert, uint8_t pin3Invert, uint8_t pin4Invert, uint8_t enableInvert)
 {
 	motor->_pinInverted[0] = pin1Invert; // bool
 	motor->_pinInverted[1] = pin2Invert; // bool
@@ -652,12 +646,12 @@ void setPinsInverted(accelstepper_t* motor, uint8_t pin1Invert, uint8_t pin2Inve
 }
 
 // Blocks until the target position is reached and stopped
-void runToPosition(accelstepper_t* motor)
+void astepper_runToPosition(accelstepper_t* motor)
 {
-    while (run(motor)) ;
+    while (astepper_run(motor)) ;
 }
 
-uint8_t runSpeedToPosition(accelstepper_t* motor)
+uint8_t astepper_runSpeedToPosition(accelstepper_t* motor)
 {
     if (motor->_targetPos == motor->_currentPos)
     	return 0; // false
@@ -666,31 +660,31 @@ uint8_t runSpeedToPosition(accelstepper_t* motor)
     else
     	motor->_direction = DIRECTION_CCW;
 
-    return runSpeed(motor);
+    return astepper_runSpeed(motor);
 }
 
 // Blocks until the new target position is reached
-void runToNewPosition(accelstepper_t* motor, long position)
+void astepper_runToNewPosition(accelstepper_t* motor, long position)
 {
-    moveTo(motor, position);
-    runToPosition(motor);
+    astepper_moveTo(motor, position);
+    astepper_runToPosition(motor);
 }
 
-void stop(accelstepper_t* motor)
+void astepper_stop(accelstepper_t* motor)
 {
     if (motor->_speed != 0.0)
     {
 		long stepsToStop = (long)((motor->_speed * motor->_speed) / (2.0 * motor->_acceleration)) + 1; // Equation 16 (+integer rounding)
 
 		if (motor->_speed > 0)
-			move(motor, stepsToStop);
+			astepper_move(motor, stepsToStop);
 
 		else
-			move(motor, -stepsToStop);
+			astepper_move(motor, -stepsToStop);
     }
 }
 
-uint8_t isRunning(accelstepper_t* motor)
+uint8_t astepper_isRunning(accelstepper_t* motor)
 {
     return !(motor->_speed == 0.0 && motor->_targetPos == motor->_currentPos);
 }

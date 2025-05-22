@@ -42,7 +42,7 @@ typedef struct
   bool cool_step_enabled;
   bool analog_current_scaling_enabled;
   bool internal_sense_resistors_enabled;
-} Settings;
+} tmc_Settings_t;
 
 typedef struct
 {
@@ -50,7 +50,7 @@ typedef struct
   uint32_t drv_err : 1;
   uint32_t uv_cp : 1;
   uint32_t reserved : 29;
-} GlobalStatus;
+} tmc_GlobalStatus_t;
 
 typedef struct
 {
@@ -71,7 +71,7 @@ typedef struct
   uint32_t reserved1 : 9;
   uint32_t stealth_chop_mode : 1;
   uint32_t standstill : 1;
-} Status;
+} tmc_Status_t;
 
 typedef union
 {
@@ -86,7 +86,7 @@ typedef union
     uint64_t crc : 8;
   };
   uint64_t bytes;
-} WriteReadReplyDatagram;
+} tmc_WriteReadReplyDatagram_t;
 
 typedef union
 {
@@ -100,7 +100,7 @@ typedef union
     uint32_t crc : 8;
   };
   uint32_t bytes;
-} ReadRequestDatagram;
+} tmc_ReadRequestDatagram_t;
 
 typedef union
 {
@@ -119,16 +119,16 @@ typedef union
     uint32_t reserved : 22;
   };
   uint32_t bytes;
-} GlobalConfig;
+} tmc_GlobalConfig_t;
 
 typedef union
 {
   struct
   {
-    GlobalStatus global_status;
+    tmc_GlobalStatus_t global_status;
   };
   uint32_t bytes;
-} GlobalStatusUnion;
+} tmc_GlobalStatusUnion_t;
 
 typedef union
 {
@@ -139,7 +139,7 @@ typedef union
     uint32_t reserved_1 : 20;
   };
   uint32_t bytes;
-} ReplyDelay;
+} tmc_ReplyDelay_t;
 
 typedef union
 {
@@ -159,7 +159,7 @@ typedef union
     uint32_t version : 8;
   };
   uint32_t bytes;
-} Input;
+} tmc_Input_t;
 
 typedef union
 {
@@ -173,7 +173,7 @@ typedef union
     uint32_t reserved_2 : 12;
   };
   uint32_t bytes;
-} DriverCurrent;
+} tmc_DriverCurrent_t;
 
 typedef union
 {
@@ -190,7 +190,7 @@ typedef union
     uint32_t reserved_3 : 16;
   };
   uint32_t bytes;
-} CoolConfig;
+} tmc_CoolConfig_t;
 
 typedef union
 {
@@ -210,16 +210,16 @@ typedef union
     uint32_t diss2vs : 1;
   };
   uint32_t bytes;
-} ChopperConfig;
+} tmc_ChopperConfig_t;
 
 typedef union
 {
   struct
   {
-    Status status;
+    tmc_Status_t status;
   };
   uint32_t bytes;
-} DriveStatus;
+} tmc_DriveStatus_t;
 
 typedef union
 {
@@ -236,7 +236,7 @@ typedef union
     uint32_t pwm_lim : 4;
   };
   uint32_t bytes;
-} PwmConfig;
+} tmc_PwmConfig_t;
 
 typedef union
 {
@@ -248,7 +248,7 @@ typedef union
     uint32_t reserved_1 : 7;
   };
   uint32_t bytes;
-} PwmScale;
+} tmc_PwmScale_t;
 
 typedef union
 {
@@ -260,6 +260,6 @@ typedef union
     uint32_t reserved_1 : 8;
   };
   uint32_t bytes;
-} PwmAuto;
+} tmc_PwmAuto_t;
 
 #endif

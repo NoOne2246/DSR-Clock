@@ -17,7 +17,7 @@
 
 #include <stdint.h>
 
-// Serial Settings
+// Serial tmc_Settings_t
 const static uint8_t BYTE_MAX_VALUE = 0xFF;
 const static uint8_t BITS_PER_BYTE = 8;
 
@@ -26,6 +26,8 @@ const static uint32_t ECHO_DELAY_MAX_MICROSECONDS = 4000;
 
 const static uint32_t REPLY_DELAY_INC_MICROSECONDS = 1;
 const static uint32_t REPLY_DELAY_MAX_MICROSECONDS = 10000;
+
+const static uint8_t REPLY_DELAY_MAX = 15;
 
 const static uint8_t STEPPER_DRIVER_FEATURE_OFF = 0;
 const static uint8_t STEPPER_DRIVER_FEATURE_ON = 1;
@@ -144,5 +146,6 @@ const static uint8_t ADDRESS_PWM_AUTO = 0x72;
 
 const static uint8_t HIGH = 1;
 const static uint8_t LOW = 0;
+
 
 #endif

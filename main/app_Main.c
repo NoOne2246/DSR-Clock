@@ -72,7 +72,7 @@ void app_main(void)
 
     gpio_set_direction(SENSOR_MINUTE, GPIO_MODE_INPUT);
     gpio_set_pull_mode(SENSOR_MINUTE, GPIO_PULLDOWN_ONLY);
-    ESP_LOGI("Setup", "Input Sensor Initialized");
+    ESP_LOGI("Setup", "tmc_Input_t Sensor Initialized");
 
     //----------------------------
     //**    Initialise Motor    **
