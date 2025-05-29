@@ -14,6 +14,11 @@
 #define RETRY_COUNT 5
 #define RETRY_DELAY_MS 5000
 
+static void set_time(void *pvParameter);
+static bool obtain_time_sntp(void);
+static bool obtain_time_rtc(void);
+static bool set_time_rtc(void);
+
 static const char *TAG = "TIME_HANDLER";
 
 TaskHandle_t set_time_task_handle = NULL; 
