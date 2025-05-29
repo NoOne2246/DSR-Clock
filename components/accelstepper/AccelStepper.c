@@ -32,20 +32,42 @@
 #define LOW 0
 
 
-#ifdef DEBUG_MODE
-//Some debugging assistance
-void dump(uint8_t* p, int l)
-{
-    int i;
+/// Called to execute a step using stepper functions (pins = 0) Only called when a new step is
+/// required. Calls _forward() or _backward() to perform the step
+/// \param[in] step The current step phase number (0 to 7)
+static void step0(accelstepper_t* motor, long step);
 
-    for (i = 0; i < l; i++)
-    {
-		printf("%20X", p[i]);
-		printf(" ");
-    }
-    printf("\n");
-}
-#endif
+/// Called to execute a step on a stepper driver (ie where pins == 1). Only called when a new step is
+/// required. Sets or clears the outputs of Step pin1 to step,
+/// and sets the output of _pin2 to the desired direction. The Step pin (_pin1) is pulsed for 1 microsecond
+/// which is the minimum STEP pulse width for the 3967 driver.
+/// \param[in] step The current step phase number (0 to 7)
+static void step1(accelstepper_t* motor, long step);
+
+/// Called to execute a step on a 2 pin motor. Only called when a new step is
+/// required. Sets or clears the outputs of pin1 and pin2.
+/// \param[in] step The current step phase number (0 to 7)
+static void step2(accelstepper_t* motor, long step);
+
+/// Called to execute a step on a 3 pin motor, such as HDD spindle. Only called when a new step is
+/// required. Sets or clears the outputs of pin1, pin2, pin3.
+/// \param[in] step The current step phase number (0 to 7)
+static void step3(accelstepper_t* motor, long step);
+
+/// Called to execute a step on a 4 pin motor. Only called when a new step is
+/// required. Sets or clears the outputs of pin1, pin2, pin3, pin4.
+/// \param[in] step The current step phase number (0 to 7)
+static void step4(accelstepper_t* motor, long step);
+
+/// Called to execute a step on a 3 pin motor, such as HDD spindle. Only called when a new step is
+/// required. Sets or clears the outputs of pin1, pin2, pin3.
+/// \param[in] step The current step phase number (0 to 7)
+static void step6(accelstepper_t* motor, long step);
+
+/// Called to execute a step on a 4 pin half-steper motor. Only called when a new step is
+/// required. Sets or clears the outputs of pin1, pin2, pin3, pin4.
+/// \param[in] step The current step phase number (0 to 7)
+static void step8(accelstepper_t* motor, long step);
 
 void astepper_moveTo(accelstepper_t* motor, long absolute)
 {
@@ -351,31 +373,31 @@ void astepper_step(accelstepper_t* motor, long step)
     switch (motor->_interface)
     {
         case FUNCTION:
-            astepper_step0(motor, step);
+            step0(motor, step);
             break;
 
 		case DRIVER:
-			astepper_step1(motor, step);
+			step1(motor, step);
 			break;
 
 		case FULL2WIRE:
-			astepper_step2(motor, step);
+			step2(motor, step);
 			break;
 
 		case FULL3WIRE:
-			astepper_step3(motor, step);
+			step3(motor, step);
 			break;
 
 		case FULL4WIRE:
-			astepper_step4(motor, step);
+			step4(motor, step);
 			break;
 
 		case HALF3WIRE:
-			astepper_step6(motor, step);
+			step6(motor, step);
 			break;
 
 		case HALF4WIRE:
-			astepper_step8(motor, step);
+			step8(motor, step);
 			break;
     }
 }
@@ -398,7 +420,7 @@ void astepper_setOutputPins(accelstepper_t* motor, uint8_t mask)
 }
 
 // 0 pin step function (ie for functional usage)
-void astepper_step0(accelstepper_t* motor, long step)
+void step0(accelstepper_t* motor, long step)
 {
 	if (motor->_speed > 0)
 		motor->_forward();
@@ -409,7 +431,7 @@ void astepper_step0(accelstepper_t* motor, long step)
 // 1 pin step function (ie for stepper drivers)
 // This is passed the current step number (0 to 7)
 // Subclasses can override
-void astepper_step1(accelstepper_t* motor, long step)
+void step1(accelstepper_t* motor, long step)
 {
     // _pin[0] is step, _pin[1] is direction
     astepper_setOutputPins(motor, motor->_direction ? 0b10 : 0b00); // Set direction first else get rogue pulses
@@ -425,7 +447,7 @@ void astepper_step1(accelstepper_t* motor, long step)
 // 2 pin step function
 // This is passed the current step number (0 to 7)
 // Subclasses can override
-void astepper_step2(accelstepper_t* motor, long step)
+void step2(accelstepper_t* motor, long step)
 {
     switch (step & 0x3)
     {
@@ -470,7 +492,7 @@ void astepper_step3(accelstepper_t* motor, long step)
 // 4 pin step function for half stepper
 // This is passed the current step number (0 to 7)
 // Subclasses can override
-void astepper_step4(accelstepper_t* motor, long step)
+void step4(accelstepper_t* motor, long step)
 {
     switch (step & 0x3)
     {
@@ -495,7 +517,7 @@ void astepper_step4(accelstepper_t* motor, long step)
 // 3 pin half step function
 // This is passed the current step number (0 to 7)
 // Subclasses can override
-void astepper_step6(accelstepper_t* motor, long step)
+void step6(accelstepper_t* motor, long step)
 {
     switch (step % 6)
     {
@@ -528,7 +550,7 @@ void astepper_step6(accelstepper_t* motor, long step)
 // 4 pin half step function
 // This is passed the current step number (0 to 7)
 // Subclasses can override
-void astepper_step8(accelstepper_t* motor, long step)
+void step8(accelstepper_t* motor, long step)
 {
     switch (step & 0x7)
     {

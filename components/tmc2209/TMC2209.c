@@ -159,7 +159,7 @@ void tmc_setMicrostepsPerStep(TMC2209_t *TMC, uint16_t microsteps_per_step)
   uint16_t microsteps_per_step_shifted = constrain_(microsteps_per_step,
                                                     MICROSTEPS_PER_STEP_MIN,
                                                     MICROSTEPS_PER_STEP_MAX);
-  microsteps_per_step_shifted = microsteps_per_step >> 1;
+  microsteps_per_step_shifted = microsteps_per_step_shifted >> 1;
   uint16_t exponent = 0;
   while (microsteps_per_step_shifted > 0)
   {

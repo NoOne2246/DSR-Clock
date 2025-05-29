@@ -168,30 +168,30 @@ extern bool tmc_isCommunicatingButNotSetup(TMC2209_t *TMC);
 
 // driver may also be disabled by the hardware enable input pin
 // this pin must be grounded or disconnected before driver may be enabled
-extern bool tmc_hardwareDisabled();
+extern bool tmc_hardwareDisabled(TMC2209_t *TMC);
 
-extern uint16_t tmc_getMicrostepsPerStep();
+extern uint16_t tmc_getMicrostepsPerStep(TMC2209_t *TMC);
 
-extern tmc_Settings_t tmc_getSettings();
+extern tmc_Settings_t tmc_getSettings(TMC2209_t *TMC);
 
 extern tmc_Status_t tmc_etStatus(TMC2209_t *TMC);
 
-extern tmc_GlobalStatus_t tmc_getGlobalStatus();
+extern tmc_GlobalStatus_t tmc_getGlobalStatus(TMC2209_t *TMC);
 
-extern void tmc_clearReset();
-extern void tmc_clearDriveError();
+extern void tmc_clearReset(TMC2209_t *TMC);
+extern void tmc_clearDriveError(TMC2209_t *TMC);
 
-extern uint8_t tmc_getInterfaceTransmissionCounter();
+extern uint8_t tmc_getInterfaceTransmissionCounter(TMC2209_t *TMC);
 
-extern uint32_t tmc_getInterstepDuration();
+extern uint32_t tmc_getInterstepDuration(TMC2209_t *TMC);
 
-extern uint16_t tmc_getStallGuardResult();
+extern uint16_t tmc_getStallGuardResult(TMC2209_t *TMC);
 
-extern uint8_t tmc_getPwmScaleSum();
-extern int16_t tmc_getPwmScaleAuto();
-extern uint8_t tmc_getPwmOffsetAuto();
-extern uint8_t tmc_getPwmGradientAuto();
+extern uint8_t tmc_getPwmScaleSum(TMC2209_t *TMC);
+extern int16_t tmc_getPwmScaleAuto(TMC2209_t *TMC);
+extern uint8_t tmc_getPwmOffsetAuto(TMC2209_t *TMC);
+extern uint8_t tmc_getPwmGradientAuto(TMC2209_t *TMC);
 
-extern uint16_t tmc_getMicrostepCounter();
+extern uint16_t tmc_getMicrostepCounter(TMC2209_t *TMC);
 
 #endif
