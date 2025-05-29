@@ -23,6 +23,8 @@
 #include "freertos/task.h"
 
 #include "stdint.h"
+#include "esp_log.h"
+#include <string.h>
 
 typedef enum
 {
@@ -39,6 +41,9 @@ typedef struct
     tmc_ReadRequestDatagram_t readRequest;
   } datagram;
 } DatagramContainer;
+
+
+static const char *TAG = "TMC";
 
 static void initialize(TMC2209_t *TMC, tmc_SerialAddress serial_address);
 static int serialAvailable(TMC2209_t *TMC);
@@ -93,10 +98,12 @@ void tmc_initialize(TMC2209_t *tmc)
 
 void tmc_setup(TMC2209_t *TMC, uart_port_t uart_port, long serial_baud_rate, tmc_SerialAddress serial_address, gpio_num_t alternate_rx_pin, gpio_num_t alternate_tx_pin)
 {
-
   TMC->hardware_serial_port_ = uart_port;
   TMC->serial_baud_rate_ = serial_baud_rate;
 
+  if(uart_is_driver_installed(TMC->hardware_serial_port_)){
+    uart_driver_delete(TMC->hardware_serial_port_);
+  }
   // Install UART driver
   uart_driver_install(TMC->hardware_serial_port_, 1024, 0, 0, NULL, 0);
 
@@ -699,14 +706,20 @@ uint16_t tmc_getMicrostepCounter(TMC2209_t *TMC)
 // private
 static void initialize(TMC2209_t *TMC, tmc_SerialAddress serial_address)
 {
+  ESP_LOGI(TAG,"Set Mode to Serial");
   setOperationModeToSerial(TMC, serial_address);
+  ESP_LOGI(TAG,"Attempting to set defaults");
   setRegistersToDefaults(TMC);
+  ESP_LOGI(TAG,"Clear Drive Error");
   tmc_clearDriveError(TMC);
 
+  ESP_LOGI(TAG,"Minimize motor current");
   minimizeMotorCurrent(TMC);
   tmc_disable(TMC);
   tmc_disableAutomaticCurrentScaling(TMC);
   tmc_disableAutomaticGradientAdaptation(TMC);
+  
+  ESP_LOGI(TAG, "chopper_config_ address: %p", (void *)&TMC->chopper_config_);
 }
 
 static int serialAvailable(TMC2209_t *TMC)

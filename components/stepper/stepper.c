@@ -2,26 +2,36 @@
 #include "AccelStepper.h"
 #include "TMC2209.h"
 #include <math.h>
+#include "esp_log.h"
+
+static const char *TAG = "Stepper";
 
 void steppers_initialize(stepper_controller_t *controller)
 {
     controller->_num_steppers = 0;
+    ESP_LOGI(TAG, "Controller Initialised");
 }
 
 uint8_t steppers_addStepper(stepper_controller_t *controller, gpio_num_t stepPin, gpio_num_t dirPin, uart_port_t uartPort, gpio_num_t rxPin, gpio_num_t txPin, tmc_SerialAddress Address)
 {
     if (controller->_num_steppers >= STEPPER_LIMIT)
+    {
+        ESP_LOGE(TAG, "Too Many Steppers");
         return -1; // No room for more
-    controller->_num_steppers++;
-    accelstepper_t *stepper= malloc(sizeof(accelstepper_t));
+    }
+    accelstepper_t *stepper = malloc(sizeof(accelstepper_t));
     astepper_initialize(stepper, 8, stepPin, dirPin, GPIO_NUM_NC, GPIO_NUM_NC, false);
     controller->_steppers[controller->_num_steppers] = stepper;
-    TMC2209_t *driver= malloc(sizeof(TMC2209_t));
+    TMC2209_t *driver = malloc(sizeof(TMC2209_t));
     tmc_initialize(driver);
     tmc_setup(driver, uartPort, 115200, Address, rxPin, txPin);
     controller->_drivers[controller->_num_steppers] = driver;
     controller->_looping_limit[controller->_num_steppers] = -1;
+    
     tmc_moveUsingStepDirInterface(controller->_drivers[controller->_num_steppers]);
+
+    ESP_LOGI(TAG, "stepper added as number %d", controller->_num_steppers);
+    controller->_num_steppers++;
     return controller->_num_steppers;
 }
 
@@ -32,6 +42,7 @@ uint8_t steppers_setupRevolution(stepper_controller_t *controller, uint8_t stepp
         return 0;
     }
     controller->_looping_limit[stepperIndex] = loopingLimit;
+    ESP_LOGI(TAG, "stepper %d will loop at %ld", stepperIndex, controller->_looping_limit[stepperIndex]);
     return 1;
 }
 
@@ -52,6 +63,7 @@ uint8_t steppers_setRMSCurrent(stepper_controller_t *controller, uint8_t stepper
         return 0;
     }
     tmc_setRMSCurrent(controller->_drivers[stepperIndex], rmsCurrent, rSense, holdMultiplier);
+    ESP_LOGI(TAG, "stepper %d RMS set", stepperIndex);
     return 1;
 }
 

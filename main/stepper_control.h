@@ -16,5 +16,6 @@ extern void stepper_init(void);
 extern void homeSteppers(void);
 extern uint8_t rewindTime(void);
 extern uint8_t forwardTime(void);
+extern void stepperTest(void * pvParameter);
 
 #endif // STEPPER_CONTROL_H

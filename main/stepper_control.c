@@ -6,17 +6,20 @@
 #include "math.h"
 
 #include "stepper.h"
+#include "esp_log.h"
 
 #define HOUR_STEPPER 0
 #define MIN_STEPPER 1
 // Define stepper motor pins and AccelStepper object
 
-stepper_controller_t *controller;
-clock_Mode_t ClockMode;
+static stepper_controller_t *controller = NULL;
+static clock_Mode_t ClockMode = REGULAR_CLOCK;
 
 TaskHandle_t runTime = NULL;
 TaskHandle_t HourHome = NULL;
 TaskHandle_t MinHome = NULL;
+
+static const char *TAG = "Stepper Handler";
 
 static void setCurrentStepMode(void);
 static uint8_t homeStepper(uint8_t stepperIndex, gpio_num_t senssorPin, long Loop);
@@ -26,11 +29,13 @@ static void homeHour(void *pvParameter);
 static void homeMin(void *pvParameter);
 static double percent(double val);
 static double withinRange(double val, double low, double high);
+static bool debouncePin(gpio_num_t pin, uint8_t val, float period);
 
 // Function declarations
 void stepper_init(void)
 {
     // Initialize the stepper controller
+    controller = (stepper_controller_t *)malloc(sizeof(stepper_controller_t));
     steppers_initialize(controller);
     steppers_addStepper(controller, MOTOR_HOUR_STEP, MOTOR_HOUR_DIR, UART_NUM_0, MOTOR_HOUR_RX, MOTOR_HOUR_TX, 0);
     steppers_addStepper(controller, MOTOR_MIN_STEP, MOTOR_MIN_DIR, UART_NUM_0, MOTOR_MIN_RX, MOTOR_MIN_TX, 1);
@@ -55,6 +60,7 @@ void setCurrentStepMode(void)
         steppers_setCurrentPercentages(controller, HOUR_STEPPER, SANYO_IRUN_FAST, SANYO_IHOLD_FAST, SANYO_IHOLD_DELAY_FAST);
         steppers_setCurrentPercentages(controller, MIN_STEPPER, LIN_IRUN_FAST, LIN_IHOLD_FAST, LIN_IHOLD_DELAY_FAST);
         break;
+    case HOMING_CLOCK:
     case REWIND_CLOCK:
     case FORWARD_CLOCK:
         microsteps[0] = SANYO_STEP_MAX;
@@ -62,8 +68,6 @@ void setCurrentStepMode(void)
         steppers_setCurrentPercentages(controller, HOUR_STEPPER, SANYO_IRUN_ULTRA, SANYO_IHOLD_ULTRA, SANYO_IHOLD_DELAY_ULTRA);
         steppers_setCurrentPercentages(controller, MIN_STEPPER, LIN_IRUN_ULTRA, LIN_IHOLD_ULTRA, LIN_IHOLD_DELAY_ULTRA);
         break;
-    case HOMING_CLOCK:
-        return;
     case REGULAR_CLOCK:
     default:
         microsteps[0] = SANYO_STEP_REGULAR;
@@ -153,7 +157,7 @@ uint8_t homeStepper(uint8_t stepperIndex, gpio_num_t sensorPin, long Loop)
         {
             if (debouncePin(sensorPin, 1, 1)) // Sensor reads high
             {
-                steppers_stop(controller, stepperIndex);
+                steppers_stopStepper(controller, stepperIndex);
                 while (steppers_runStepper(controller, stepperIndex))
                 {
                     vTaskDelay(0.5 / portTICK_PERIOD_MS);
@@ -167,7 +171,7 @@ uint8_t homeStepper(uint8_t stepperIndex, gpio_num_t sensorPin, long Loop)
     while (steppers_runStepper(controller, stepperIndex))
     {
 
-        if (debouncePin(sensorPin,0,1)) // Sensor reads low
+        if (debouncePin(sensorPin, 0, 1)) // Sensor reads low
         {
             if (!enteredLowRange)
             {
@@ -211,6 +215,7 @@ bool debouncePin(gpio_num_t pin, uint8_t val, float period)
     vTaskDelay(period / portTICK_PERIOD_MS);
     return gpio_get_level(pin) == val;
 }
+
 void regular_Move(void)
 {
     ClockMode = REGULAR_CLOCK;
@@ -301,4 +306,28 @@ double withinRange(double val, double low, double high)
         return val > low && val < high;
     }
     return val < high && val > low;
+}
+
+extern void stepperTest(void *pvParameter)
+{
+    double pos[2];
+    pos[0] = 2000;
+    pos[1] = 2000;
+    while (1)
+    {
+        for (int i = 0; i <= 4; i++)
+        {
+            ClockMode = (clock_Mode_t)i;
+            setCurrentStepMode();
+            steppers_move(controller, pos);
+            ESP_LOGI(TAG, "attempting to move");
+            while (steppers_runSpeed(controller))
+            {
+                vTaskDelay(pdMS_TO_TICKS(10));
+            }
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+        }
+        pos[0] = -pos[0];
+        pos[1] = -pos[1];
+    }
 }

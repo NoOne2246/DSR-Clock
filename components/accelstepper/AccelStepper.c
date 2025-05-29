@@ -471,7 +471,7 @@ void step2(accelstepper_t* motor, long step)
 // 3 pin step function
 // This is passed the current step number (0 to 7)
 // Subclasses can override
-void astepper_step3(accelstepper_t* motor, long step)
+void step3(accelstepper_t* motor, long step)
 {
     switch (step % 3)
     {
